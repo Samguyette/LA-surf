@@ -170,10 +170,10 @@ export default function SurfMap() {
         keyboard={true}
         attributionControl={true}
       >
-        {/* Map tiles - Using CartoDB Voyager for clean appearance with natural colors */}
+        {/* Map tiles - Using MapTiler custom theme */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.maptiler.com/copyright">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://api.maptiler.com/maps/062c0d04-1842-4a45-8181-c5bec3bf2214/256/{z}/{x}/{y}.png?key=3tFgnOQBQixe61aigsBT"
           maxZoom={15}
           minZoom={9}
         />
