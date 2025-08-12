@@ -93,9 +93,15 @@ async function fetchOpenMeteoWaveData(): Promise<OpenMeteoResponse[]> {
 }
 
 async function tryOpenMeteoEndpoint(): Promise<Response> {
-  // Define LA County coastline coordinate grid
-  const latitudes = [33.7, 33.8, 33.9, 34.0, 34.1, 34.2, 34.3, 34.4]
-  const longitudes = [-119.2, -119.0, -118.8, -118.6, -118.4, -118.2, -118.0, -117.8]
+  // Define high-resolution LA County coastline coordinate grid
+  // Optimized for 10 lats x 10 lons = 100 coordinates (max tested limit)
+  // This provides much better resolution than the original 8x8 = 64 coordinates
+  const latitudes = [
+    33.70, 33.78, 33.86, 33.94, 34.02, 34.10, 34.18, 34.26, 34.34, 34.42
+  ]
+  const longitudes = [
+    -119.30, -119.05, -118.80, -118.55, -118.30, -118.05, -117.80, -117.95, -118.15, -118.40
+  ]
   
   // Build the API URL with multiple coordinates for better coverage
   const baseUrl = 'https://marine-api.open-meteo.com/v1/marine'
@@ -133,27 +139,68 @@ async function processWaveDataForCoastline(openMeteoData: OpenMeteoResponse[]): 
   // Process coastline data by dividing into sections for better spatial resolution
   const coastlineData: WaveDataPoint[] = []
   
-  // Divide coastline into logical sections for more accurate wave data
+  // Divide coastline into detailed sections for highly accurate wave data
+  // Increased from 4 to 12 sections for much better granularity
   const coastlineSections = [
     {
-      name: 'Oxnard/Ventura',
-      points: LA_COASTLINE_POINTS.slice(0, 6), // Oxnard to County Line
-      bounds: { north: 34.45, south: 34.20, west: -119.3, east: -118.95 }
+      name: 'Oxnard/Ventura County',
+      points: LA_COASTLINE_POINTS.slice(0, 2), // North Starting Point to Zuma
+      bounds: { north: 34.45, south: 34.30, west: -119.4, east: -119.0 }
     },
     {
-      name: 'Malibu',
-      points: LA_COASTLINE_POINTS.slice(6, 13), // County Line to Malibu Lagoon
-      bounds: { north: 34.25, south: 34.0, west: -119.0, east: -118.6 }
+      name: 'Zuma/Point Dume',
+      points: LA_COASTLINE_POINTS.slice(1, 3), // Zuma to Malibu Point
+      bounds: { north: 34.30, south: 34.15, west: -119.1, east: -118.8 }
     },
     {
-      name: 'Santa Monica Bay',
-      points: LA_COASTLINE_POINTS.slice(13, 17), // Topanga to Venice
-      bounds: { north: 34.05, south: 33.99, west: -118.55, east: -118.39 }
+      name: 'Malibu Point/Surfrider',
+      points: LA_COASTLINE_POINTS.slice(2, 5), // Malibu Point to Malibu Lagoon
+      bounds: { north: 34.15, south: 34.05, west: -118.85, east: -118.65 }
     },
     {
-      name: 'South Bay',
-      points: LA_COASTLINE_POINTS.slice(17, 22), // Manhattan to Long Beach
-      bounds: { north: 34.0, south: 33.9, west: -118.3, east: -117.85 }
+      name: 'Malibu Creek/Big Rock',
+      points: LA_COASTLINE_POINTS.slice(4, 6), // Malibu Lagoon to Topanga
+      bounds: { north: 34.08, south: 34.02, west: -118.70, east: -118.50 }
+    },
+    {
+      name: 'Topanga/Sunset Point',
+      points: LA_COASTLINE_POINTS.slice(5, 7), // Topanga to Will Rogers
+      bounds: { north: 34.05, south: 34.00, west: -118.55, east: -118.48 }
+    },
+    {
+      name: 'Will Rogers/Santa Monica',
+      points: LA_COASTLINE_POINTS.slice(6, 9), // Will Rogers to Santa Monica Pier
+      bounds: { north: 34.02, south: 33.98, west: -118.52, east: -118.42 }
+    },
+    {
+      name: 'Santa Monica Pier/Venice',
+      points: LA_COASTLINE_POINTS.slice(8, 11), // Santa Monica Pier to Venice
+      bounds: { north: 34.00, south: 33.96, west: -118.46, east: -118.40 }
+    },
+    {
+      name: 'Venice/El Segundo',
+      points: LA_COASTLINE_POINTS.slice(10, 12), // Venice to Manhattan Beach
+      bounds: { north: 33.98, south: 33.92, west: -118.42, east: -118.25 }
+    },
+    {
+      name: 'Manhattan Beach/Hermosa',
+      points: LA_COASTLINE_POINTS.slice(11, 13), // Manhattan to Hermosa Beach
+      bounds: { north: 33.94, south: 33.88, west: -118.30, east: -118.18 }
+    },
+    {
+      name: 'Hermosa/Redondo Beach',
+      points: LA_COASTLINE_POINTS.slice(12, 14), // Hermosa to Redondo Beach
+      bounds: { north: 33.90, south: 33.84, west: -118.22, east: -118.12 }
+    },
+    {
+      name: 'Redondo/Palos Verdes',
+      points: LA_COASTLINE_POINTS.slice(13, 16), // Redondo to PV Peninsula
+      bounds: { north: 33.86, south: 33.78, west: -118.18, east: -118.25 }
+    },
+    {
+      name: 'Palos Verdes Peninsula',
+      points: LA_COASTLINE_POINTS.slice(15, 18), // PV Peninsula to Rancho PV
+      bounds: { north: 33.82, south: 33.70, west: -118.45, east: -118.30 }
     }
   ]
   
@@ -333,39 +380,103 @@ async function processSectionWaveData(
 }
 
 function getSectionCharacteristics(sectionName: string) {
-  // Define realistic characteristics for each coastal section
+  // Define realistic characteristics for each detailed coastal section
   switch (sectionName) {
-    case 'Oxnard/Ventura':
+    case 'Oxnard/Ventura County':
       return {
-        heightMultiplier: 1.1, // Slightly bigger waves, more open to swell
-        periodMultiplier: 1.05, // Longer period swells
-        directionOffset: -5, // More NW exposure
-        windOffset: 2, // More wind exposure
+        heightMultiplier: 1.15, // Exposed to big NW swells
+        periodMultiplier: 1.1, // Long period swells
+        directionOffset: -8, // Strong NW exposure
+        windOffset: 3, // More wind exposure
+        tempOffset: -2 // Coolest water
+      }
+    case 'Zuma/Point Dume':
+      return {
+        heightMultiplier: 1.1, // Good swell exposure
+        periodMultiplier: 1.05, // Longer periods
+        directionOffset: -5, // NW exposure
+        windOffset: 1, // Some wind protection
         tempOffset: -1 // Slightly cooler
       }
-    case 'Malibu':
+    case 'Malibu Point/Surfrider':
       return {
-        heightMultiplier: 1.0, // Consistent waves
-        periodMultiplier: 1.0, // Good period
+        heightMultiplier: 1.0, // Classic Malibu waves
+        periodMultiplier: 1.0, // Perfect period
         directionOffset: 0, // Direct west exposure
-        windOffset: -1, // Some wind protection from points
+        windOffset: -2, // Point protection
+        tempOffset: 0 // Ideal temperature
+      }
+    case 'Malibu Creek/Big Rock':
+      return {
+        heightMultiplier: 0.95, // Slightly more protected
+        periodMultiplier: 0.98, // Good period
+        directionOffset: 2, // Slight SW exposure
+        windOffset: -1, // Some protection
         tempOffset: 0 // Typical temperature
       }
-    case 'Santa Monica Bay':
+    case 'Topanga/Sunset Point':
       return {
-        heightMultiplier: 0.85, // More protected bay
-        periodMultiplier: 0.95, // Slightly shorter period
-        directionOffset: 10, // More SW exposure
-        windOffset: 3, // More onshore wind
-        tempOffset: 1 // Slightly warmer (bay effect)
+        heightMultiplier: 0.9, // More protected bay area
+        periodMultiplier: 0.95, // Shorter period
+        directionOffset: 5, // More SW exposure
+        windOffset: 0, // Average wind
+        tempOffset: 1 // Slightly warmer
       }
-    case 'South Bay':
+    case 'Will Rogers/Santa Monica':
       return {
-        heightMultiplier: 0.9, // Somewhat protected
-        periodMultiplier: 0.9, // Shorter period
-        directionOffset: 15, // More southern exposure
-        windOffset: 4, // More wind exposure
-        tempOffset: 2 // Warmer (urban heat island)
+        heightMultiplier: 0.85, // Bay protection
+        periodMultiplier: 0.92, // Shorter period
+        directionOffset: 8, // SW exposure
+        windOffset: 2, // More onshore wind
+        tempOffset: 1 // Bay warming
+      }
+    case 'Santa Monica Pier/Venice':
+      return {
+        heightMultiplier: 0.8, // Protected bay
+        periodMultiplier: 0.9, // Short period
+        directionOffset: 10, // SW exposure
+        windOffset: 3, // Onshore wind
+        tempOffset: 2 // Urban heat effect
+      }
+    case 'Venice/El Segundo':
+      return {
+        heightMultiplier: 0.85, // Beach break exposure
+        periodMultiplier: 0.88, // Shorter period
+        directionOffset: 12, // S/SW exposure
+        windOffset: 4, // Airport wind effect
+        tempOffset: 2 // Warm urban area
+      }
+    case 'Manhattan Beach/Hermosa':
+      return {
+        heightMultiplier: 0.9, // Good beach break
+        periodMultiplier: 0.9, // Moderate period
+        directionOffset: 15, // More south exposure
+        windOffset: 3, // Onshore winds
+        tempOffset: 2 // Urban heat
+      }
+    case 'Hermosa/Redondo Beach':
+      return {
+        heightMultiplier: 0.88, // Beach break
+        periodMultiplier: 0.88, // Short period
+        directionOffset: 18, // South exposure
+        windOffset: 4, // More wind
+        tempOffset: 3 // Warmer urban area
+      }
+    case 'Redondo/Palos Verdes':
+      return {
+        heightMultiplier: 0.92, // Transitioning to point
+        periodMultiplier: 0.9, // Moderate period
+        directionOffset: 20, // S/SSW exposure
+        windOffset: 2, // Some wind protection
+        tempOffset: 2 // Urban influence
+      }
+    case 'Palos Verdes Peninsula':
+      return {
+        heightMultiplier: 1.05, // Point break exposure
+        periodMultiplier: 1.0, // Good period
+        directionOffset: 25, // Strong south exposure
+        windOffset: 0, // Protected from NW winds
+        tempOffset: 1 // Slightly warmer
       }
     default:
       return {

@@ -5,8 +5,8 @@ import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { WaveDataPoint, WaveDataAPIResponse } from '@/types/wave-data'
 import { getCoastlineBounds } from '@/data/coastline'
-import CoastlineLayer from './CoastlineLayer'
-import RefreshIndicator from './RefreshIndicator'
+import CoastlineLayer from '@/components/CoastlineLayer'
+import RefreshIndicator from '@/components/RefreshIndicator'
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
