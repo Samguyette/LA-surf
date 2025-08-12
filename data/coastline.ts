@@ -49,28 +49,42 @@ export const LA_COASTLINE_POINTS: CoastlinePoint[] = [
   { lat: 34.0150, lng: -118.4350, name: 'Ocean Park' },
   { lat: 34.0120, lng: -118.4250, name: 'Venice Pier' },
   { lat: 34.0101, lng: -118.4001, name: 'Venice Beach' },
+  { lat: 34.0080, lng: -118.4200, name: 'Venice Breakwater' },
+  { lat: 34.0050, lng: -118.4300, name: 'Marina del Rey' },
   
-  // Venice/El Segundo Section
-  { lat: 34.0050, lng: -118.3800, name: 'Dockweiler Beach' },
-  { lat: 34.0000, lng: -118.3500, name: 'El Segundo Beach' },
-  { lat: 33.9980, lng: -118.3200, name: 'Manhattan Beach North' },
+  // Venice/Dockweiler Section
+  { lat: 33.9991, lng: -118.4181, name: 'Dockweiler State Beach' },
+  { lat: 33.9950, lng: -118.4150, name: 'Dockweiler Beach North' },
+  { lat: 33.9900, lng: -118.4120, name: 'Dockweiler Beach South' },
+  { lat: 33.9850, lng: -118.4100, name: 'Playa del Rey Beach' },
   
-  // Manhattan Beach/Hermosa Section
-  { lat: 33.9945, lng: -118.2889, name: 'Manhattan Beach' },
-  { lat: 33.9900, lng: -118.2700, name: 'Manhattan Beach South' },
-  { lat: 33.9850, lng: -118.2500, name: 'Hermosa Beach North' },
-  { lat: 33.9823, lng: -118.2001, name: 'Hermosa Beach' },
+  // Manhattan Beach Section
+  { lat: 33.8844, lng: -118.4085, name: 'Manhattan Beach North' },
+  { lat: 33.8823, lng: -118.4062, name: 'Manhattan Beach Pier' },
+  { lat: 33.8801, lng: -118.4039, name: 'Manhattan Beach' },
+  { lat: 33.8780, lng: -118.4016, name: 'Manhattan Beach South' },
   
-  // Hermosa/Redondo Beach Section
-  { lat: 33.9780, lng: -118.1900, name: 'Hermosa Beach South' },
-  { lat: 33.9740, lng: -118.1750, name: 'Redondo Beach North' },
-  { lat: 33.9689, lng: -118.1556, name: 'Redondo Beach' },
+  // Hermosa Beach Section
+  { lat: 33.8629, lng: -118.3998, name: 'Hermosa Beach North' },
+  { lat: 33.8607, lng: -118.3975, name: 'Hermosa Beach Pier' },
+  { lat: 33.8585, lng: -118.3952, name: 'Hermosa Beach' },
+  { lat: 33.8563, lng: -118.3929, name: 'Hermosa Beach South' },
   
-  // Redondo/Palos Verdes Section
-  { lat: 33.9600, lng: -118.1400, name: 'Redondo Beach South' },
-  { lat: 33.9500, lng: -118.1200, name: 'Torrance Beach' },
-  { lat: 33.9456, lng: -118.0556, name: 'Palos Verdes' },
-  { lat: 33.9200, lng: -118.1800, name: 'Malaga Cove' },
+  // Redondo Beach Section
+  { lat: 33.8485, lng: -118.3889, name: 'Redondo Beach North' },
+  { lat: 33.8430, lng: -118.3855, name: 'Redondo Beach Pier' },
+  { lat: 33.8375, lng: -118.3821, name: 'Redondo Beach' },
+  
+  // Redondo/Torrance Section
+  { lat: 33.8320, lng: -118.3787, name: 'Redondo Beach South' },
+  { lat: 33.8265, lng: -118.3753, name: 'Torrance Beach North' },
+  { lat: 33.8210, lng: -118.3719, name: 'Torrance Beach' },
+  { lat: 33.8155, lng: -118.3685, name: 'Torrance Beach South' },
+  
+  // Palos Verdes Section
+  { lat: 33.8100, lng: -118.3651, name: 'RAT Beach (Redondo Beach)' },
+  { lat: 33.7900, lng: -118.3500, name: 'Malaga Cove' },
+  { lat: 33.7800, lng: -118.3400, name: 'Bluff Cove' },
   
   // Palos Verdes Peninsula Section
   { lat: 33.8445, lng: -118.3170, name: 'Palos Verdes Peninsula' },

@@ -5,6 +5,7 @@ import { Polyline, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { WaveDataPoint } from '@/types/wave-data'
 import { getQualityColorRGB, getWaveQualityLevel } from '@/utils/waveQuality'
+import { findNearestCoastlinePoint } from '@/data/coastline'
 
 interface CoastlineLayerProps {
   waveData: WaveDataPoint[]
@@ -14,6 +15,7 @@ interface CoastlineLayerProps {
 interface TooltipData {
   point: WaveDataPoint
   position: L.LatLng
+  coastlinePointName: string
 }
 
 interface CoastlineSegment {
@@ -23,6 +25,7 @@ interface CoastlineSegment {
   weight: number
   opacity: number
   wavePoint: WaveDataPoint
+  coastlinePointName: string
 }
 
 /**
@@ -252,13 +255,17 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
         const color = getQualityColorRGB(nearestWavePoint.qualityScore)
         const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
         
+        // Find nearest coastline point name
+        const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
+        
         segments.push({
           id: `natural-segment-${segmentIndex}`,
           positions: segment,
           color,
           weight,
           opacity: 0.8,
-          wavePoint: nearestWavePoint
+          wavePoint: nearestWavePoint,
+          coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location'
         })
       } else {
         // Large segment - subdivide it
@@ -292,13 +299,17 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
           const color = getQualityColorRGB(nearestWavePoint.qualityScore)
           const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
           
+          // Find nearest coastline point name
+          const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
+          
           segments.push({
             id: `natural-segment-${segmentIndex}-${i}`,
             positions: subSegment,
             color,
             weight,
             opacity: 0.8,
-            wavePoint: nearestWavePoint
+            wavePoint: nearestWavePoint,
+            coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location'
           })
         }
       }
@@ -310,10 +321,15 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
   const coastlineSegments = createCoastlineSegments()
 
   // Handle mouse events for tooltips
-  const handleMouseOver = (event: L.LeafletMouseEvent, wavePoint: WaveDataPoint) => {
+  const handleMouseOver = (event: L.LeafletMouseEvent, segment: CoastlineSegment) => {
+    // Use the actual mouse position to find the nearest surf spot name
+    // This ensures accuracy when hovering over different parts of the coastline
+    const actualHoverPoint = findNearestCoastlinePoint(event.latlng.lat, event.latlng.lng)
+    
     setHoveredPoint({
-      point: wavePoint,
-      position: event.latlng
+      point: segment.wavePoint,
+      position: event.latlng,
+      coastlinePointName: actualHoverPoint.name || 'Unknown Location'
     })
   }
 
@@ -357,7 +373,7 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
             lineJoin: 'round',
           }}
           eventHandlers={{
-            mouseover: (e) => handleMouseOver(e, segment.wavePoint),
+            mouseover: (e) => handleMouseOver(e, segment),
             mouseout: handleMouseOut,
           }}
         />
@@ -371,7 +387,10 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
           autoPan={false}
           className="wave-tooltip"
         >
-          <WaveTooltipContent point={hoveredPoint.point} />
+          <WaveTooltipContent 
+            point={hoveredPoint.point} 
+            coastlinePointName={hoveredPoint.coastlinePointName}
+          />
         </Popup>
       )}
     </>
@@ -383,9 +402,10 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
  */
 interface WaveTooltipContentProps {
   point: WaveDataPoint
+  coastlinePointName: string
 }
 
-function WaveTooltipContent({ point }: WaveTooltipContentProps) {
+function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentProps) {
   const qualityLevel = getWaveQualityLevel(point.qualityScore)
   const qualityClass = `wave-quality-score ${qualityLevel}`
   
@@ -398,7 +418,10 @@ function WaveTooltipContent({ point }: WaveTooltipContentProps) {
 
   return (
     <div className="wave-quality-tooltip">
-      <h3>Surf Conditions</h3>
+      <h3>{coastlinePointName}</h3>
+      <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+        Surf Conditions
+      </div>
       
       <div style={{ marginBottom: '8px' }}>
         <span className={qualityClass}>
