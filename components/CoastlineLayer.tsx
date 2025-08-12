@@ -8,6 +8,7 @@ import { getQualityColorRGB, getWaveQualityLevel } from '@/utils/waveQuality'
 
 interface CoastlineLayerProps {
   waveData: WaveDataPoint[]
+  onLoadingChange?: (isLoading: boolean) => void
 }
 
 interface TooltipData {
@@ -28,7 +29,7 @@ interface CoastlineSegment {
  * Component that renders the LA County coastline with wave quality visualization
  * Uses OpenStreetMap Overpass API to get actual coastline geometry
  */
-export default function CoastlineLayer({ waveData }: CoastlineLayerProps) {
+export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineLayerProps) {
   const [hoveredPoint, setHoveredPoint] = useState<TooltipData | null>(null)
   const [coastlineGeometry, setCoastlineGeometry] = useState<[number, number][]>([])
   const [isLoadingCoastline, setIsLoadingCoastline] = useState(true)
@@ -39,13 +40,14 @@ export default function CoastlineLayer({ waveData }: CoastlineLayerProps) {
     const fetchCoastlineGeometry = async () => {
       try {
         setIsLoadingCoastline(true)
+        onLoadingChange?.(true)
         
-        // Query Overpass API for LA County + Ventura County coastline (extended to Oxnard)
+        // Query Overpass API for coastline from specified north point to Rancho Palos Verdes
         const overpassQuery = `
           [out:json][timeout:25];
           (
             way["natural"="coastline"]
-            (33.7,-119.5,34.5,-118.1);
+            (33.7,-119.1,34.1,-118.0);
           );
           out geom;
         `
@@ -118,33 +120,56 @@ export default function CoastlineLayer({ waveData }: CoastlineLayerProps) {
           }
         }
         
+        // Filter coastline to only include points between specified north point and Rancho Palos Verdes
+        const filteredCoords = coastlineCoords.filter(coord => {
+          const lat = coord[0]
+          const lng = coord[1]
+          // North point: 34.09413904941302, -119.07850285736356
+          // Rancho Palos Verdes: 33.7445, -118.3870
+          
+          // Basic bounds check
+          const withinBounds = lat >= 33.7445 && lat <= 34.09413904941302 && lng >= -119.07850285736356 && lng <= -118.3870
+          
+          // Exclude Long Beach area (approximately 33.7-33.8 lat, -118.2 to -118.1 lng)
+          const inLongBeach = lat >= 33.7 && lat <= 33.8 && lng >= -118.2 && lng <= -118.1
+          
+          // Exclude marina area (33.96473731214972,-118.45981872167121 to 33.96097999713439,-118.45598554857159)
+          const inMarina = lat >= 33.96097999713439 && lat <= 33.96473731214972 && 
+                           lng >= -118.45981872167121 && lng <= -118.45598554857159
+          
+          return withinBounds && !inLongBeach && !inMarina
+        })
+        
         console.log('Fetched coastline coordinates:', coastlineCoords.length, 'points')
-        setCoastlineGeometry(coastlineCoords)
+        console.log('Filtered coastline coordinates:', filteredCoords.length, 'points (North point to Rancho Palos Verdes, excluding marina)')
+        console.log('Marina exclusion created gap in coastline at:', {
+          marina: {
+            north: 33.96473731214972,
+            south: 33.96097999713439,
+            west: -118.45981872167121,
+            east: -118.45598554857159
+          }
+        })
+        setCoastlineGeometry(filteredCoords)
         
       } catch (error) {
         console.error('Error fetching coastline:', error)
-        // Fallback to extended coastline including Oxnard area
+        // Fallback to coastline from specified north point to Rancho Palos Verdes
         setCoastlineGeometry([
-          [34.3989, -119.2445], // Oxnard State Beach
-          [34.3678, -119.2001], // Port Hueneme
-          [34.3356, -119.1556], // Silver Strand Beach
-          [34.3045, -119.1112], // Point Mugu
-          [34.2734, -119.0667], // Mugu Rock
-          [34.2423, -119.0223], // County Line Beach
-          [34.2112, -118.9778], // Deer Creek Beach
-          [34.1801, -118.9334], // Trancas Canyon
-          [34.1490, -118.8889], // Encinal Canyon
-          [34.1157, -118.8445], // Leo Carrillo
+          [34.09413904941302, -119.07850285736356], // North starting point
           [34.0823, -118.8001], // Zuma Beach
           [34.0456, -118.6778], // Malibu Lagoon
           [34.0189, -118.4445], // Santa Monica Pier
           [34.0101, -118.4001], // Venice Beach
           [33.9823, -118.2001], // Hermosa Beach
           [33.9456, -118.0556], // Palos Verdes
-          [33.9123, -117.8889]  // Long Beach
+          [33.8445, -118.3170], // Palos Verdes Peninsula
+          [33.7945, -118.3370], // Point Vicente
+          [33.7445, -118.3870]  // Rancho Palos Verdes
         ])
       } finally {
         setIsLoadingCoastline(false)
+        onLoadingChange?.(false)
       }
     }
     

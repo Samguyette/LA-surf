@@ -57,16 +57,15 @@ function MapBoundsController({ bounds }: MapBoundsControllerProps) {
 export default function SurfMap() {
   const [waveData, setWaveData] = useState<WaveDataPoint[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCoastlineLoading, setIsCoastlineLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   /**
    * Fetch wave data from the API
    */
-  const fetchWaveData = useCallback(async (showRefreshing = false) => {
+  const fetchWaveData = useCallback(async () => {
     try {
-      if (showRefreshing) setIsRefreshing(true)
       setError(null)
       
       const response = await fetch('/api/wave-data', {
@@ -98,7 +97,6 @@ export default function SurfMap() {
       setError(err instanceof Error ? err.message : 'Failed to fetch wave data')
     } finally {
       setIsLoading(false)
-      setIsRefreshing(false)
     }
   }, [])
 
@@ -110,7 +108,7 @@ export default function SurfMap() {
   // Auto-refresh every 20 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchWaveData(true)
+      fetchWaveData()
     }, 20 * 60 * 1000) // 20 minutes
 
     return () => clearInterval(interval)
@@ -185,21 +183,22 @@ export default function SurfMap() {
         
         {/* Coastline with wave data */}
         {waveData.length > 0 && (
-          <CoastlineLayer waveData={waveData} />
+          <CoastlineLayer 
+            waveData={waveData} 
+            onLoadingChange={setIsCoastlineLoading}
+          />
         )}
       </MapContainer>
       
       {/* Loading indicator */}
-      {isLoading && (
+      {(isLoading || isCoastlineLoading) && (
         <div className="loading-spinner" />
       )}
       
       {/* Refresh indicator */}
       <RefreshIndicator
         lastUpdate={lastUpdate}
-        isRefreshing={isRefreshing}
         error={error}
-        onRefresh={() => fetchWaveData(true)}
       />
     </div>
   )

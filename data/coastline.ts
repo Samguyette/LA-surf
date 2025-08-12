@@ -9,17 +9,8 @@ import { CoastlinePoint } from '@/types/wave-data'
  */
 
 export const LA_COASTLINE_POINTS: CoastlinePoint[] = [
-  // Extended coastline - Ventura/Oxnard area to Long Beach
-  { lat: 34.3989, lng: -119.2445, name: 'Oxnard State Beach' },
-  { lat: 34.3678, lng: -119.2001, name: 'Port Hueneme Beach' },
-  { lat: 34.3356, lng: -119.1556, name: 'Silver Strand Beach' },
-  { lat: 34.3045, lng: -119.1112, name: 'Point Mugu' },
-  { lat: 34.2734, lng: -119.0667, name: 'Mugu Rock' },
-  { lat: 34.2423, lng: -119.0223, name: 'County Line Beach' },
-  { lat: 34.2112, lng: -118.9778, name: 'Deer Creek Beach' },
-  { lat: 34.1801, lng: -118.9334, name: 'Trancas Canyon' },
-  { lat: 34.1490, lng: -118.8889, name: 'Encinal Canyon' },
-  { lat: 34.1157, lng: -118.8445, name: 'Leo Carrillo State Beach' },
+  // Coastline from specified north point to Rancho Palos Verdes
+  { lat: 34.09413904941302, lng: -119.07850285736356, name: 'North Starting Point' },
   { lat: 34.0823, lng: -118.8001, name: 'Zuma Beach' },
   { lat: 34.0678, lng: -118.7001, name: 'Malibu Point' },
   { lat: 34.0456, lng: -118.6778, name: 'Malibu Lagoon' },
@@ -31,7 +22,9 @@ export const LA_COASTLINE_POINTS: CoastlinePoint[] = [
   { lat: 33.9823, lng: -118.2001, name: 'Hermosa Beach' },
   { lat: 33.9689, lng: -118.1556, name: 'Redondo Beach' },
   { lat: 33.9456, lng: -118.0556, name: 'Palos Verdes' },
-  { lat: 33.9123, lng: -117.8889, name: 'Long Beach' }
+  { lat: 33.8445, lng: -118.3170, name: 'Palos Verdes Peninsula' },
+  { lat: 33.7945, lng: -118.3370, name: 'Point Vicente' },
+  { lat: 33.7445, lng: -118.3870, name: 'Rancho Palos Verdes' }
 ]
 
 /**
