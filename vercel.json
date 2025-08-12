@@ -1,0 +1,26 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "devCommand": "npm run dev",
+  "env": {
+    "NOAA_API_BASE_URL": "https://coastwatch.pfeg.noaa.gov/erddap"
+  },
+  "functions": {
+    "app/api/wave-data/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=1200, stale-while-revalidate=600"
+        }
+      ]
+    }
+  ]
+}
