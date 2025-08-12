@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import NodeCache from 'node-cache'
 import { WaveDataPoint, OpenMeteoResponse } from '@/types/wave-data'
-import { calculateWaveQuality } from '@/utils/waveQuality'
+import { calculateWaveQuality, getLocationFactor } from '@/utils/waveQuality'
 import { LA_COASTLINE_POINTS } from '@/data/coastline'
 
 // Cache for 20 minutes (1200 seconds)
@@ -352,13 +352,16 @@ async function processSectionWaveData(
     const wavePeriodSeconds = Math.max(5, Math.min(25, finalPeriod))
     const windSpeedKnots = Math.max(0, Math.min(30, estimatedWindSpeed))
     
-    // Calculate wave quality score
+    // Get location factor for this section
+    const locationFactor = getLocationFactor(section.name)
+    
+    // Calculate wave quality score with location factor
     const qualityScore = calculateWaveQuality({
       waveHeight: waveHeightFeet,
       wavePeriod: wavePeriodSeconds,
       windSpeed: windSpeedKnots,
       waveDirection: finalDirection
-    })
+    }, locationFactor)
     
     // Calculate water temperature based on season and location
     const baseWaterTemp = 64 + Math.sin((new Date().getMonth() - 2) * Math.PI / 6) * 8

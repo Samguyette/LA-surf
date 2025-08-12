@@ -3,50 +3,56 @@ import { WaveQualityInput, WaveQualityLevel, WaveQualityConfig } from '@/types/w
 /**
  * Wave Quality Scoring Algorithm for LA County Surf Conditions
  * 
- * This algorithm calculates a 0-100 quality score based on NOAA WAVEWATCH III variables.
- * The scoring is optimized for Southern California surf conditions and takes into account:
+ * This algorithm calculates a 0-100 quality score using a more realistic Surfline-style approach.
+ * The scoring creates natural variation across locations and reflects actual surf quality:
  * 
- * 1. Wave Height (40% weight): Optimal range 2-8 feet
- *    - Too small (<2ft): poor surfing conditions
- *    - Optimal (2-6ft): excellent for most surfers
- *    - Large (6-8ft): good for experienced surfers
- *    - Too large (>8ft): dangerous conditions
+ * 1. Wave Height (35% weight): More realistic optimal ranges
+ *    - Tiny (<1.5ft): very poor conditions (0-20%)
+ *    - Small (1.5-3ft): poor to fair conditions (20-50%)
+ *    - Good (3-5ft): good conditions (50-80%) 
+ *    - Optimal (4-6ft): excellent conditions (80-100%)
+ *    - Large (6-8ft): good for experts (60-80%)
+ *    - Too large (>8ft): dangerous/closed out (20-40%)
  * 
- * 2. Wave Period (35% weight): Optimal range 8-16 seconds
- *    - Short period (<8s): choppy, poor quality waves (wind waves)
- *    - Medium period (8-12s): good quality groundswell
- *    - Long period (12-16s): excellent quality, powerful waves
- *    - Very long (>16s): may be too powerful or spread out
+ * 2. Wave Period (30% weight): More stringent period requirements
+ *    - Very short (<7s): wind waves, very poor (0-20%)
+ *    - Short (7-10s): poor to fair quality (20-50%)
+ *    - Medium (10-13s): good quality (50-80%)
+ *    - Long (13-16s): excellent quality (80-100%)
+ *    - Very long (>16s): may be too powerful (60-80%)
  * 
- * 3. Wind Speed (25% weight): Lower is better
- *    - Calm (0-5 knots): glass-off conditions, excellent
- *    - Light (5-10 knots): light texture, good
- *    - Moderate (10-15 knots): choppy surface, fair
- *    - Strong (>15 knots): blown out conditions, poor
+ * 3. Wind Speed (25% weight): More realistic wind sensitivity
+ *    - Glass (0-3 knots): excellent conditions (90-100%)
+ *    - Light (3-8 knots): good conditions (60-90%)
+ *    - Moderate (8-12 knots): fair conditions (30-60%)
+ *    - Strong (12-18 knots): poor conditions (10-30%)
+ *    - Very strong (>18 knots): blown out (0-10%)
  * 
- * Note: Wind direction could be added for more precision (offshore vs onshore)
- * but is not included in this simplified model.
+ * 4. Location Factor (10% weight): Reflects spot quality and consistency
+ *    - Premium spots get slight bonuses
+ *    - Crowded/inconsistent spots get penalties
  */
 
 const WAVE_QUALITY_CONFIG: WaveQualityConfig = {
   weights: {
-    waveHeight: 0.40,  // 40% - most important factor
-    wavePeriod: 0.35,  // 35% - quality of the waves
-    windSpeed: 0.25    // 25% - surface conditions
+    waveHeight: 0.35,  // 35% - wave size importance
+    wavePeriod: 0.30,  // 30% - wave quality/power
+    windSpeed: 0.25,   // 25% - surface conditions
+    locationFactor: 0.10  // 10% - spot quality modifier
   },
   optimal: {
-    minWaveHeight: 2.0,    // feet
-    maxWaveHeight: 8.0,    // feet
-    minWavePeriod: 8.0,    // seconds
+    minWaveHeight: 3.0,    // feet - raised for more realistic scoring
+    maxWaveHeight: 6.0,    // feet - tighter optimal range
+    minWavePeriod: 10.0,   // seconds - higher minimum for quality
     maxWavePeriod: 16.0,   // seconds
-    maxWindSpeed: 15.0     // knots
+    maxWindSpeed: 12.0     // knots - more wind-sensitive
   }
 }
 
 /**
  * Calculate wave quality score (0-100) based on wave conditions
  */
-export function calculateWaveQuality(input: WaveQualityInput): number {
+export function calculateWaveQuality(input: WaveQualityInput, locationFactor: number = 1.0): number {
   const { waveHeight, wavePeriod, windSpeed } = input
   const { weights, optimal } = WAVE_QUALITY_CONFIG
   
@@ -55,99 +61,164 @@ export function calculateWaveQuality(input: WaveQualityInput): number {
   const periodScore = calculateWavePeriodScore(wavePeriod, optimal)
   const windScore = calculateWindSpeedScore(windSpeed, optimal)
   
-  // Weighted average
-  const totalScore = (
+  // Calculate base score from conditions
+  const conditionsScore = (
     heightScore * weights.waveHeight +
     periodScore * weights.wavePeriod +
     windScore * weights.windSpeed
   )
   
+  // Apply location factor (0.7 = poor spot, 1.0 = average, 1.2 = premium spot)
+  const locationWeight = weights.locationFactor || 0.10
+  const locationScore = Math.max(0, Math.min(1, locationFactor))
+  
+  // Combine conditions score (90%) with location factor (10%)
+  const totalScore = conditionsScore * (1 - locationWeight) + locationScore * locationWeight
+  
   // Convert to 0-100 scale and round
-  return Math.round(totalScore * 100)
+  return Math.round(Math.max(0, Math.min(100, totalScore * 100)))
 }
 
 /**
- * Calculate wave height component score
- * Optimal range: 2-6 feet (beginner to intermediate)
- * Good range: 6-8 feet (advanced)
- * Poor: <2 feet or >8 feet
+ * Calculate wave height component score with realistic Surfline-style scaling
+ * More stringent scoring that reflects actual surf quality expectations
  */
 function calculateWaveHeightScore(height: number, optimal: WaveQualityConfig['optimal']): number {
   if (height <= 0) return 0
   
-  if (height < optimal.minWaveHeight) {
-    // Too small: linear scale from 0 to 0.6
-    return Math.max(0, (height / optimal.minWaveHeight) * 0.6)
-  } else if (height <= 6) {
-    // Optimal range: high score
-    return 1.0
+  if (height < 1.5) {
+    // Tiny waves: very poor conditions (0-20%)
+    return Math.max(0, height * 0.133) // 0 at 0ft, 0.2 at 1.5ft
+  } else if (height < optimal.minWaveHeight) {
+    // Small waves: poor to fair conditions (20-50%)
+    const progress = (height - 1.5) / (optimal.minWaveHeight - 1.5)
+    return 0.2 + progress * 0.3  // 20% to 50%
   } else if (height <= optimal.maxWaveHeight) {
-    // Large but manageable: good score with slight decline
-    return 0.8 - ((height - 6) / (optimal.maxWaveHeight - 6)) * 0.2
+    // Optimal range: good to excellent conditions (50-100%)
+    const progress = (height - optimal.minWaveHeight) / (optimal.maxWaveHeight - optimal.minWaveHeight)
+    return 0.5 + progress * 0.5  // 50% to 100%
+  } else if (height <= 8) {
+    // Large waves: good for experts (60-80%)
+    const progress = (height - optimal.maxWaveHeight) / (8 - optimal.maxWaveHeight)
+    return 0.8 - progress * 0.2  // 80% down to 60%
   } else {
-    // Too large: rapidly declining score
-    const excess = height - optimal.maxWaveHeight
-    return Math.max(0, 0.6 - (excess / 4) * 0.6)
+    // Too large: dangerous/closed out (20-40%)
+    const excess = Math.min(height - 8, 4) // Cap excess at 4ft for calculation
+    return 0.4 - (excess / 4) * 0.2  // 40% down to 20%
   }
 }
 
 /**
- * Calculate wave period component score
- * Longer periods generally indicate better quality groundswell
+ * Calculate wave period component score with realistic quality standards
+ * Period is crucial for wave quality - shorter periods = choppier, lower quality
  */
 function calculateWavePeriodScore(period: number, optimal: WaveQualityConfig['optimal']): number {
   if (period <= 0) return 0
   
-  if (period < 6) {
-    // Very short period: wind waves, poor quality
-    return 0.1
+  if (period < 7) {
+    // Very short period: wind waves, very poor quality (0-20%)
+    return Math.max(0, period * 0.0286) // 0 at 0s, 0.2 at 7s
   } else if (period < optimal.minWavePeriod) {
-    // Short period: increasing quality
-    return 0.1 + ((period - 6) / (optimal.minWavePeriod - 6)) * 0.5
-  } else if (period <= 12) {
-    // Good period range: high score
-    return 0.6 + ((period - optimal.minWavePeriod) / (12 - optimal.minWavePeriod)) * 0.4
+    // Short period: poor to fair quality (20-50%)
+    const progress = (period - 7) / (optimal.minWavePeriod - 7)
+    return 0.2 + progress * 0.3  // 20% to 50%
+  } else if (period <= 13) {
+    // Medium period: good quality (50-80%)
+    const progress = (period - optimal.minWavePeriod) / (13 - optimal.minWavePeriod)
+    return 0.5 + progress * 0.3  // 50% to 80%
   } else if (period <= optimal.maxWavePeriod) {
-    // Excellent period range: maximum score
-    return 1.0
+    // Long period: excellent quality (80-100%)
+    const progress = (period - 13) / (optimal.maxWavePeriod - 13)
+    return 0.8 + progress * 0.2  // 80% to 100%
   } else {
-    // Very long period: may be too spread out
-    const excess = period - optimal.maxWavePeriod
-    return Math.max(0.7, 1.0 - (excess / 10) * 0.3)
+    // Very long period: may be too powerful/spread out (60-80%)
+    const excess = Math.min(period - optimal.maxWavePeriod, 8) // Cap excess
+    return 0.8 - (excess / 8) * 0.2  // 80% down to 60%
   }
 }
 
 /**
- * Calculate wind speed component score
- * Lower wind speeds are better for clean surf conditions
+ * Calculate wind speed component score with realistic wind sensitivity
+ * Wind has major impact on surf quality - most conditions are not glassy
  */
 function calculateWindSpeedScore(windSpeed: number, optimal: WaveQualityConfig['optimal']): number {
   if (windSpeed < 0) return 0
   
-  if (windSpeed <= 5) {
-    // Light wind: excellent conditions
-    return 1.0
-  } else if (windSpeed <= 10) {
-    // Moderate wind: good conditions
-    return 1.0 - ((windSpeed - 5) / 5) * 0.3
+  if (windSpeed <= 3) {
+    // Glass conditions: excellent but rare (90-100%)
+    return 0.9 + (3 - windSpeed) * 0.033  // 90% at 3kts, 100% at 0kts
+  } else if (windSpeed <= 8) {
+    // Light wind: good conditions (60-90%)
+    const progress = (windSpeed - 3) / 5
+    return 0.9 - progress * 0.3  // 90% down to 60%
   } else if (windSpeed <= optimal.maxWindSpeed) {
-    // Strong wind: declining conditions
-    return 0.7 - ((windSpeed - 10) / 5) * 0.4
+    // Moderate wind: fair conditions (30-60%)
+    const progress = (windSpeed - 8) / (optimal.maxWindSpeed - 8)
+    return 0.6 - progress * 0.3  // 60% down to 30%
+  } else if (windSpeed <= 18) {
+    // Strong wind: poor conditions (10-30%)
+    const progress = (windSpeed - optimal.maxWindSpeed) / (18 - optimal.maxWindSpeed)
+    return 0.3 - progress * 0.2  // 30% down to 10%
   } else {
-    // Very strong wind: poor conditions
-    const excess = windSpeed - optimal.maxWindSpeed
-    return Math.max(0, 0.3 - (excess / 10) * 0.3)
+    // Very strong wind: blown out (0-10%)
+    const excess = Math.min(windSpeed - 18, 12) // Cap excess at 12kts
+    return 0.1 - (excess / 12) * 0.1  // 10% down to 0%
   }
 }
 
 /**
- * Get quality level description from numeric score
+ * Get location quality factor based on surf spot characteristics
+ * This reflects the inherent quality and consistency of different surf spots
+ */
+export function getLocationFactor(sectionName: string): number {
+  // Location factors: 0.7 = poor/crowded, 1.0 = average, 1.2 = premium
+  switch (sectionName) {
+    // Premium point breaks and consistent spots
+    case 'Malibu Point/Surfrider':
+      return 1.2  // World-class point break
+    case 'Palos Verdes Peninsula':
+      return 1.15 // Quality point breaks, less crowded
+    case 'Zuma/Point Dume':
+      return 1.1  // Good exposure, quality waves
+    
+    // Above average spots
+    case 'Oxnard/Ventura County':
+      return 1.05 // Good swell exposure
+    case 'Malibu Creek/Big Rock':
+      return 1.0  // Solid spots but can be inconsistent
+    
+    // Average spots
+    case 'Topanga/Sunset Point':
+      return 0.95 // Decent but can be inconsistent
+    case 'Hermosa/Redondo Beach':
+      return 0.9  // Beach breaks, moderate quality
+    case 'Manhattan Beach/Hermosa':
+      return 0.9  // Popular but crowded
+    case 'Redondo/Palos Verdes':
+      return 0.95 // Transitional area, variable quality
+    
+    // Below average / crowded spots
+    case 'Will Rogers/Santa Monica':
+      return 0.8  // Very crowded, variable quality
+    case 'Santa Monica Pier/Venice':
+      return 0.7  // Crowded tourist area, inconsistent
+    case 'Venice/El Segundo':
+      return 0.75 // Crowded, airport wind effects
+    
+    default:
+      return 1.0  // Average
+  }
+}
+
+/**
+ * Get quality level description from numeric score with adjusted thresholds
+ * More realistic thresholds that reflect the tougher scoring
  */
 export function getWaveQualityLevel(score: number): WaveQualityLevel {
-  if (score >= 80) return 'excellent'
-  if (score >= 60) return 'good'
-  if (score >= 40) return 'fair'
-  return 'poor'
+  if (score >= 75) return 'excellent'  // Raised from 80 - excellent is rare
+  if (score >= 55) return 'good'       // Raised from 60 - good is solid
+  if (score >= 35) return 'fair'       // Lowered from 40 - fair is average
+  return 'poor'                        // Poor is common in reality
 }
 
 /**

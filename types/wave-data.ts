@@ -73,6 +73,7 @@ export interface WaveQualityConfig {
     waveHeight: number
     wavePeriod: number
     windSpeed: number
+    locationFactor?: number // optional location quality modifier
   }
   optimal: {
     minWaveHeight: number // feet
