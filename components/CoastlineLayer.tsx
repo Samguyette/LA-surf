@@ -6,6 +6,7 @@ import L from 'leaflet'
 import { WaveDataPoint } from '@/types/wave-data'
 import { getQualityColorRGB, getWaveQualityLevel } from '@/utils/waveQuality'
 import { findNearestCoastlinePoint } from '@/data/coastline'
+import { staticCoastlineGeometry } from '@/data/coastline'
 
 interface CoastlineLayerProps {
   waveData: WaveDataPoint[]
@@ -41,148 +42,14 @@ interface CoastlineSegment {
 export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineLayerProps) {
   const [selectedPoint, setSelectedPoint] = useState<TooltipData | null>(null)
   const [coastlineGeometry, setCoastlineGeometry] = useState<[number, number][]>([])
-  const [isLoadingCoastline, setIsLoadingCoastline] = useState(true)
   const map = useMap()
 
-  // Fetch actual coastline geometry from OpenStreetMap
+    // Use hardcoded coastline geometry (static data from OpenStreetMap Overpass API)
   useEffect(() => {
-    const fetchCoastlineGeometry = async () => {
-      try {
-        setIsLoadingCoastline(true)
-        onLoadingChange?.(true)
-        
-        // Query Overpass API for coastline from specified north point to Rancho Palos Verdes
-        const overpassQuery = `
-          [out:json][timeout:25];
-          (
-            way["natural"="coastline"]
-            (33.7,-119.1,34.1,-118.0);
-          );
-          out geom;
-        `
-        
-        const response = await fetch('https://overpass-api.de/api/interpreter', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `data=${encodeURIComponent(overpassQuery)}`
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch coastline data')
-        }
-        
-        const data = await response.json()
-        
-        // Extract and process coordinates from the response
-        const coastlineCoords: [number, number][] = []
-        
-        if (data.elements && data.elements.length > 0) {
-          // Collect all coordinate segments
-          const allSegments: [number, number][][] = []
-          
-          data.elements.forEach((element: any) => {
-            if (element.geometry && element.geometry.length > 0) {
-              const segment: [number, number][] = element.geometry.map((coord: any) => [coord.lat, coord.lon])
-              allSegments.push(segment)
-            }
-          })
-          
-          // Process each segment separately to preserve natural coastline geometry
-          if (allSegments.length > 0) {
-            // Sort segments by their northernmost point to maintain coastal order
-            allSegments.sort((a, b) => {
-              const aMaxLat = Math.max(...a.map(coord => coord[0]))
-              const bMaxLat = Math.max(...b.map(coord => coord[0]))
-              return bMaxLat - aMaxLat
-            })
-            
-            // Keep segments separate - don't artificially connect them
-            for (const segment of allSegments) {
-              if (segment.length > 1) {
-                // Simplify each segment individually
-                const simplifiedSegment: [number, number][] = []
-                
-                for (let i = 0; i < segment.length; i++) {
-                  if (i === 0 || i === segment.length - 1) {
-                    // Always keep first and last points of each segment
-                    simplifiedSegment.push(segment[i])
-                  } else {
-                    const prev = simplifiedSegment[simplifiedSegment.length - 1]
-                    const curr = segment[i]
-                    const distance = Math.sqrt(
-                      Math.pow(curr[0] - prev[0], 2) + 
-                      Math.pow(curr[1] - prev[1], 2)
-                    )
-                    // Only keep points that are sufficiently spaced
-                    if (distance > 0.002) {
-                      simplifiedSegment.push(curr)
-                    }
-                  }
-                }
-                
-                // Add this segment to our coastline coordinates
-                coastlineCoords.push(...simplifiedSegment)
-              }
-            }
-          }
-        }
-        
-        // Filter coastline to only include points between specified north point and Rancho Palos Verdes
-        const filteredCoords = coastlineCoords.filter(coord => {
-          const lat = coord[0]
-          const lng = coord[1]
-          // North point: 34.09413904941302, -119.07850285736356
-          // Rancho Palos Verdes: 33.7445, -118.3870
-          
-          // Basic bounds check
-          const withinBounds = lat >= 33.7445 && lat <= 34.09413904941302 && lng >= -119.07850285736356 && lng <= -118.3870
-          
-          // Exclude Long Beach area (approximately 33.7-33.8 lat, -118.2 to -118.1 lng)
-          const inLongBeach = lat >= 33.7 && lat <= 33.8 && lng >= -118.2 && lng <= -118.1
-          
-          // Exclude marina area (33.96473731214972,-118.45981872167121 to 33.96097999713439,-118.45598554857159)
-          const inMarina = lat >= 33.96097999713439 && lat <= 33.96473731214972 && 
-                           lng >= -118.45981872167121 && lng <= -118.45598554857159
-          
-          return withinBounds && !inLongBeach && !inMarina
-        })
-        
-        console.log('Fetched coastline coordinates:', coastlineCoords.length, 'points')
-        console.log('Filtered coastline coordinates:', filteredCoords.length, 'points (North point to Rancho Palos Verdes, excluding marina)')
-        console.log('Marina exclusion created gap in coastline at:', {
-          marina: {
-            north: 33.96473731214972,
-            south: 33.96097999713439,
-            west: -118.45981872167121,
-            east: -118.45598554857159
-          }
-        })
-        setCoastlineGeometry(filteredCoords)
-        
-      } catch (error) {
-        console.error('Error fetching coastline:', error)
-        // Fallback to coastline from specified north point to Rancho Palos Verdes
-        setCoastlineGeometry([
-          [34.09413904941302, -119.07850285736356], // North starting point
-          [34.0823, -118.8001], // Zuma Beach
-          [34.0456, -118.6778], // Malibu Lagoon
-          [34.0189, -118.4445], // Santa Monica Pier
-          [34.0101, -118.4001], // Venice Beach
-          [33.9823, -118.2001], // Hermosa Beach
-          [33.9456, -118.0556], // Palos Verdes
-          [33.8445, -118.3170], // Palos Verdes Peninsula
-          [33.7945, -118.3370], // Point Vicente
-          [33.7445, -118.3870]  // Rancho Palos Verdes
-        ])
-      } finally {
-        setIsLoadingCoastline(false)
-        onLoadingChange?.(false)
-      }
-    }
-    
-    fetchCoastlineGeometry()
+    // Complete coastline coordinates from Overpass API (processed and filtered)
+    // This eliminates the need for API fetches and makes the coastline load instantly
+    setCoastlineGeometry(staticCoastlineGeometry)
+    onLoadingChange?.(false)
   }, [])
 
   // Create segments that respect natural coastline geometry
@@ -355,17 +222,7 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
     }
   }, [map])
 
-  // Debug logging
-  console.log('CoastlineLayer Debug:', {
-    waveDataLength: waveData.length,
-    coastlineGeometryLength: coastlineGeometry.length,
-    segmentsLength: coastlineSegments.length,
-    isLoadingCoastline
-  })
 
-  if (isLoadingCoastline) {
-    return null // Show nothing while loading coastline
-  }
 
   return (
     <>
