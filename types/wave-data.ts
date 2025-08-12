@@ -21,6 +21,27 @@ export interface CoastlinePoint {
   name?: string
 }
 
+export interface OpenMeteoResponse {
+  latitude: number
+  longitude: number
+  current: {
+    time: string
+    wave_height: number | null
+    wave_direction: number | null
+    wave_period: number | null
+  }
+  hourly: {
+    time: string[]
+    wave_height: (number | null)[]
+    wave_direction: (number | null)[]
+    wave_period: (number | null)[]
+    swell_wave_height: (number | null)[]
+    swell_wave_direction: (number | null)[]
+    swell_wave_period: (number | null)[]
+  }
+}
+
+// Legacy NOAA interface kept for reference
 export interface NOAAResponse {
   table: {
     columnNames: string[]
