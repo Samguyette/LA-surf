@@ -31,9 +31,15 @@ interface CoastlineSegment {
 /**
  * Component that renders the LA County coastline with wave quality visualization
  * Uses OpenStreetMap Overpass API to get actual coastline geometry
+ * 
+ * Interactive behavior:
+ * - On desktop: Click any part of the coastline to view wave conditions
+ * - On mobile: Tap any part of the coastline to view wave conditions
+ * - Tap elsewhere on the map or the close button to dismiss the popup
+ * - Each coastline segment shows color-coded wave quality data
  */
 export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineLayerProps) {
-  const [hoveredPoint, setHoveredPoint] = useState<TooltipData | null>(null)
+  const [selectedPoint, setSelectedPoint] = useState<TooltipData | null>(null)
   const [coastlineGeometry, setCoastlineGeometry] = useState<[number, number][]>([])
   const [isLoadingCoastline, setIsLoadingCoastline] = useState(true)
   const map = useMap()
@@ -320,26 +326,22 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
 
   const coastlineSegments = createCoastlineSegments()
 
-  // Handle mouse events for tooltips
-  const handleMouseOver = (event: L.LeafletMouseEvent, segment: CoastlineSegment) => {
-    // Use the actual mouse position to find the nearest surf spot name
-    // This ensures accuracy when hovering over different parts of the coastline
-    const actualHoverPoint = findNearestCoastlinePoint(event.latlng.lat, event.latlng.lng)
+  // Handle click/tap events for mobile-friendly tooltips
+  const handleSegmentClick = (event: L.LeafletMouseEvent, segment: CoastlineSegment) => {
+    // Use the actual click position to find the nearest surf spot name
+    // This ensures accuracy when tapping different parts of the coastline
+    const actualClickPoint = findNearestCoastlinePoint(event.latlng.lat, event.latlng.lng)
     
-    setHoveredPoint({
+    setSelectedPoint({
       point: segment.wavePoint,
       position: event.latlng,
-      coastlinePointName: actualHoverPoint.name || 'Unknown Location'
+      coastlinePointName: actualClickPoint.name || 'Unknown Location'
     })
   }
 
-  const handleMouseOut = () => {
-    setHoveredPoint(null)
-  }
-
-  // Clear tooltip when map is clicked
+  // Clear tooltip when map is clicked (but not on a segment)
   useEffect(() => {
-    const handleMapClick = () => setHoveredPoint(null)
+    const handleMapClick = () => setSelectedPoint(null)
     map.on('click', handleMapClick)
     return () => {
       map.off('click', handleMapClick)
@@ -373,23 +375,28 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
             lineJoin: 'round',
           }}
           eventHandlers={{
-            mouseover: (e) => handleMouseOver(e, segment),
-            mouseout: handleMouseOut,
+            click: (e) => {
+              e.originalEvent.stopPropagation() // Prevent map click event
+              handleSegmentClick(e, segment)
+            },
           }}
         />
       ))}
 
       {/* Tooltip popup */}
-      {hoveredPoint && (
+      {selectedPoint && (
         <Popup
-          position={hoveredPoint.position}
-          closeButton={false}
-          autoPan={false}
+          position={selectedPoint.position}
+          closeButton={true}
+          autoPan={true}
           className="wave-tooltip"
+          eventHandlers={{
+            remove: () => setSelectedPoint(null)
+          }}
         >
           <WaveTooltipContent 
-            point={hoveredPoint.point} 
-            coastlinePointName={hoveredPoint.coastlinePointName}
+            point={selectedPoint.point} 
+            coastlinePointName={selectedPoint.coastlinePointName}
           />
         </Popup>
       )}

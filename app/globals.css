@@ -179,3 +179,38 @@ html, body {
   outline: none;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
 }
+
+/* Coastline segments - make them obviously interactive */
+.leaflet-interactive {
+  cursor: pointer !important;
+}
+
+/* Mobile touch feedback for coastline */
+@media (max-width: 768px) {
+  .leaflet-interactive:active {
+    filter: brightness(1.2);
+  }
+  
+  /* Make popup content more touch-friendly */
+  .wave-quality-tooltip {
+    padding: 16px;
+    min-width: 240px;
+  }
+  
+  .wave-quality-tooltip h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  
+  .leaflet-popup-content {
+    margin: 16px 20px;
+  }
+  
+  /* Larger close button for mobile */
+  .leaflet-popup-close-button {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 20px !important;
+    line-height: 28px !important;
+  }
+}
