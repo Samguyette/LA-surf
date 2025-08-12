@@ -23,6 +23,7 @@ html, body {
 /* Override Leaflet styles for better appearance */
 .leaflet-container {
   font-family: inherit;
+  touch-action: pan-x pan-y; /* Allow panning but enable precise touch events */
 }
 
 .leaflet-popup-content-wrapper {
@@ -183,6 +184,8 @@ html, body {
 /* Coastline segments - make them obviously interactive */
 .leaflet-interactive {
   cursor: pointer !important;
+  touch-action: manipulation; /* Improves touch responsiveness */
+  -webkit-tap-highlight-color: transparent; /* Remove iOS tap highlight */
 }
 
 /* Mobile touch feedback for coastline */

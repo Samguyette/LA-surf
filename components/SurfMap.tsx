@@ -38,6 +38,11 @@ function MapBoundsController({ bounds }: MapBoundsControllerProps) {
     map.setMinZoom(9)
     map.setMaxZoom(15)
     
+    // Configure mobile touch handling
+    if ('tap' in map && (map as any).tap) {
+      (map as any).tap.enable()
+    }
+    
     // Ensure map stays within bounds
     map.on('drag', () => {
       map.panInsideBounds(bounds, { animate: false })
@@ -169,6 +174,7 @@ export default function SurfMap() {
         doubleClickZoom={true}
         keyboard={true}
         attributionControl={true}
+        touchZoom={true}
       >
         {/* Map tiles - Using MapTiler custom theme */}
         <TileLayer

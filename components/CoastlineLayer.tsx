@@ -341,8 +341,15 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
 
   // Clear tooltip when map is clicked (but not on a segment)
   useEffect(() => {
-    const handleMapClick = () => setSelectedPoint(null)
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+      // Only close if the click wasn't prevented by a segment
+      if (!e.originalEvent.defaultPrevented) {
+        setSelectedPoint(null)
+      }
+    }
+    
     map.on('click', handleMapClick)
+    
     return () => {
       map.off('click', handleMapClick)
     }
@@ -377,7 +384,13 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
           eventHandlers={{
             click: (e) => {
               e.originalEvent.stopPropagation() // Prevent map click event
+              e.originalEvent.preventDefault() // Prevent default behavior
               handleSegmentClick(e, segment)
+            },
+            // Add mousedown for better mobile compatibility
+            mousedown: (e) => {
+              e.originalEvent.stopPropagation()
+              e.originalEvent.preventDefault()
             },
           }}
         />
