@@ -176,12 +176,45 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
     })
   }
 
-  // Clear tooltip when map is clicked (but not on a segment)
+  // Handle map clicks - check if close to coastline and show data
   useEffect(() => {
     const handleMapClick = (e: L.LeafletMouseEvent) => {
-      // Only close if the click wasn't prevented by a segment
+      // Only process if the click wasn't prevented by a segment
       if (!e.originalEvent.defaultPrevented) {
-        setSelectedPoint(null)
+        // Check if click is close to any coastline segment
+        const clickLat = e.latlng.lat
+        const clickLng = e.latlng.lng
+        const clickTolerance = 0.005 // About 500 meters in LA area
+        
+        let closestSegment: CoastlineSegment | null = null
+        let closestDistance = Infinity
+        
+        for (const segment of coastlineSegments) {
+          // Check distance to each point in the segment
+          for (const position of segment.positions) {
+            const distance = Math.sqrt(
+              Math.pow(position[0] - clickLat, 2) + 
+              Math.pow(position[1] - clickLng, 2)
+            )
+            if (distance < closestDistance) {
+              closestDistance = distance
+              closestSegment = segment
+            }
+          }
+        }
+        
+        // If click is within tolerance of coastline, show the data
+        if (closestSegment && closestDistance < clickTolerance) {
+          const actualClickPoint = findNearestCoastlinePoint(clickLat, clickLng)
+          setSelectedPoint({
+            point: closestSegment.wavePoint,
+            position: e.latlng,
+            coastlinePointName: actualClickPoint.name || 'Unknown Location'
+          })
+        } else {
+          // Click is far from coastline, close any existing popup
+          setSelectedPoint(null)
+        }
       }
     }
     
@@ -190,7 +223,7 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
     return () => {
       map.off('click', handleMapClick)
     }
-  }, [map])
+  }, [map, coastlineSegments])
 
 
 
@@ -202,7 +235,7 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
           positions={segment.positions}
           pathOptions={{
             color: segment.color,
-            weight: segment.weight,
+            weight: Math.max(segment.weight, 8),
             opacity: segment.opacity,
             lineCap: 'round',
             lineJoin: 'round',
