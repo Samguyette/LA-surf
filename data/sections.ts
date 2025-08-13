@@ -18,18 +18,17 @@ export const SECTION_CHARACTERISTICS: Record<string, {
   periodMultiplier: number
   directionOffset: number
   windOffset: number
-  tempOffset: number
 }> = {
-  'Oxnard/Ventura County':       { heightMultiplier: 1.20, periodMultiplier: 1.15, directionOffset: -10, windOffset: +4, tempOffset: -3 },
-  'Zuma/Point Dume':             { heightMultiplier: 1.15, periodMultiplier: 1.10, directionOffset: -8,  windOffset: +2, tempOffset: -2 },
-  'Malibu Point/Surfrider':      { heightMultiplier: 1.05, periodMultiplier: 1.05, directionOffset: -2,  windOffset: -3, tempOffset: -1 },
-  'Malibu Creek/Big Rock':       { heightMultiplier: 0.90, periodMultiplier: 0.95, directionOffset: +2,  windOffset: -2, tempOffset:  0  },
-  'Topanga/Sunset Point':        { heightMultiplier: 0.85, periodMultiplier: 0.90, directionOffset: +5,  windOffset: +1, tempOffset: +2  },
-  'Will Rogers/Santa Monica':    { heightMultiplier: 0.80, periodMultiplier: 0.88, directionOffset: +10, windOffset: +3, tempOffset: +2  },
-  'Santa Monica Pier/Venice':    { heightMultiplier: 0.75, periodMultiplier: 0.85, directionOffset: +12, windOffset: +4, tempOffset: +3  },
-  'Venice/El Segundo':           { heightMultiplier: 0.80, periodMultiplier: 0.83, directionOffset: +15, windOffset: +5, tempOffset: +3  },
-  'Manhattan Beach/Hermosa':     { heightMultiplier: 1.00, periodMultiplier: 0.85, directionOffset: +18, windOffset: +4, tempOffset: +3  },
-  'Hermosa/Redondo Beach':       { heightMultiplier: 0.85, periodMultiplier: 0.85, directionOffset: +20, windOffset: +5, tempOffset: +3  },
-  'Redondo/Palos Verdes':        { heightMultiplier: 0.90, periodMultiplier: 0.88, directionOffset: +22, windOffset: +3, tempOffset: +2  },
-  'Palos Verdes Peninsula':      { heightMultiplier: 1.10, periodMultiplier: 1.05, directionOffset: +30, windOffset: -1, tempOffset: +2  }
+  'Oxnard/Ventura County':       { heightMultiplier: 1.20, periodMultiplier: 1.15, directionOffset: -10, windOffset: +4 },
+  'Zuma/Point Dume':             { heightMultiplier: 1.15, periodMultiplier: 1.10, directionOffset: -8,  windOffset: +2 },
+  'Malibu Point/Surfrider':      { heightMultiplier: 1.05, periodMultiplier: 1.05, directionOffset: -2,  windOffset: -3 },
+  'Malibu Creek/Big Rock':       { heightMultiplier: 0.90, periodMultiplier: 0.95, directionOffset: +2,  windOffset: -2 },
+  'Topanga/Sunset Point':        { heightMultiplier: 0.85, periodMultiplier: 0.90, directionOffset: +5,  windOffset: +1 },
+  'Will Rogers/Santa Monica':    { heightMultiplier: 0.80, periodMultiplier: 0.88, directionOffset: +10, windOffset: +3 },
+  'Santa Monica Pier/Venice':    { heightMultiplier: 0.75, periodMultiplier: 0.85, directionOffset: +12, windOffset: +4 },
+  'Venice/El Segundo':           { heightMultiplier: 0.80, periodMultiplier: 0.83, directionOffset: +15, windOffset: +5 },
+  'Manhattan Beach/Hermosa':     { heightMultiplier: 1.00, periodMultiplier: 0.85, directionOffset: +18, windOffset: +4 },
+  'Hermosa/Redondo Beach':       { heightMultiplier: 0.85, periodMultiplier: 0.85, directionOffset: +20, windOffset: +5 },
+  'Redondo/Palos Verdes':        { heightMultiplier: 0.90, periodMultiplier: 0.88, directionOffset: +22, windOffset: +3 },
+  'Palos Verdes Peninsula':      { heightMultiplier: 1.10, periodMultiplier: 1.05, directionOffset: +30, windOffset: -1 }
 }

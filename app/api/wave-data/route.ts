@@ -37,10 +37,10 @@ const NOAA_STATIONS = {
  * APIs Used:
  * 1. Marine Weather API (https://open-meteo.com/en/docs/marine-weather-api)
  *    Variables: wave_height, wave_period, wave_direction, swell_wave_height, 
- *              swell_wave_period, swell_wave_direction
+ *              swell_wave_period, swell_wave_direction, sea_surface_temperature
  * 
  * 2. Forecast API (https://open-meteo.com/en/docs)
- *    Variables: wind_speed_10m (knots), wind_direction_10m (degrees)
+ *    Variables: wind_speed_10m (knots), wind_direction_10m (degrees), temperature_2m
  * 
  * Enhanced Features:
  * - Real-time wind data integration for accurate surf quality assessment
@@ -200,10 +200,11 @@ async function tryOpenMeteoEndpoint(): Promise<{ waveResponse: Response; windRes
   const marineParams = new URLSearchParams({
     latitude: latitudes.join(','),
     longitude: longitudes.join(','),
-    current: 'wave_height,wave_direction,wave_period',
-    hourly: 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period',
+    current: 'wave_height,wave_direction,wave_period,sea_surface_temperature',
+    hourly: 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,sea_surface_temperature',
     forecast_days: '1',
-    timezone: 'America/Los_Angeles'
+    timezone: 'America/Los_Angeles',
+    temperature_unit: 'fahrenheit' // Get sea surface temperature in Fahrenheit
   })
   
   // Build the forecast API URL for wind and temperature data  
@@ -412,9 +413,9 @@ function processSectionWaveData(
     // Average the nearby wave station data using inverse distance weighting
     let waveWeight = 0
     let weightedHeight = 0, weightedPeriod = 0, weightedDirection = 0
-    let weightedSwellHeight = 0, weightedSwellPeriod = 0
+    let weightedSwellHeight = 0, weightedSwellPeriod = 0, weightedWaterTemp = 0
     let avgHeight = 0, avgPeriod = 0, avgDirection = 0
-    let avgSwellHeight = 0, avgSwellPeriod = 0
+    let avgSwellHeight = 0, avgSwellPeriod = 0, avgWaterTemp = 0
     
     for (const { station, distance } of nearbyWaveStations) {
       const weight = 1 / (distance + 0.01) // Inverse distance weighting
@@ -423,6 +424,7 @@ function processSectionWaveData(
       let currentHeight = station.current.wave_height ?? null
       let currentPeriod = station.current.wave_period ?? null
       let currentDirection = station.current.wave_direction ?? null
+      let currentWaterTemp = station.current.sea_surface_temperature ?? null
       
       // If current data is null, try to use hourly data
       if (currentHeight === null || currentPeriod === null || currentDirection === null) {
@@ -439,10 +441,23 @@ function processSectionWaveData(
         }
       }
       
+      // Get water temperature from current or hourly data
+      if (currentWaterTemp === null) {
+        const waterTempIdx = findFirstNonNullIndex(station.hourly.sea_surface_temperature || [])
+        if (waterTempIdx !== -1) {
+          currentWaterTemp = station.hourly.sea_surface_temperature?.[waterTempIdx] ?? null
+        }
+      }
+      
       if (currentHeight !== null && currentPeriod !== null && currentDirection !== null) {
         weightedHeight += currentHeight * weight
         weightedPeriod += currentPeriod * weight
         weightedDirection += currentDirection * weight
+        
+        // Add water temperature to weighted average if available
+        if (currentWaterTemp !== null) {
+          weightedWaterTemp += currentWaterTemp * weight
+        }
         
         // Get swell data from hourly (use first non-null values)
         let swellHeight = null, swellPeriod = null
@@ -515,6 +530,7 @@ function processSectionWaveData(
       avgDirection = fallbackDirection
       avgSwellHeight = fallbackHeight * 0.7
       avgSwellPeriod = fallbackPeriod + 2
+      avgWaterTemp = 62 // Fallback to typical LA water temperature in Fahrenheit
     } else {
       // Calculate weighted averages for wave data
       avgHeight = weightedHeight / waveWeight
@@ -522,6 +538,7 @@ function processSectionWaveData(
       avgDirection = weightedDirection / waveWeight
       avgSwellHeight = weightedSwellHeight / waveWeight
       avgSwellPeriod = weightedSwellPeriod / waveWeight
+      avgWaterTemp = weightedWaterTemp / waveWeight
     }
     
     if (windWeight === 0) {
@@ -529,18 +546,12 @@ function processSectionWaveData(
       console.warn(`No valid wind data for point ${point.lat}, ${point.lng}, using defaults`)
       avgWindSpeed = 8 + Math.random() * 6 // 8-14 knots (already in knots from API)
       avgWindDirection = 280 + Math.random() * 40 // Generally westerly for LA
-      // Default air temp based on LA seasonal averages (already in Fahrenheit from API)
-      avgAirTemp = 65 + Math.sin((new Date().getMonth() - 2) * Math.PI / 6) * 10 // 55-75°F seasonal range
+      avgAirTemp = 68 // Fallback to typical LA air temperature in Fahrenheit
     } else {
       // Calculate weighted averages for wind and air temperature data
       avgWindSpeed = weightedWindSpeed / windWeight
       avgWindDirection = weightedWindDirection / windWeight
       avgAirTemp = weightedAirTemp / windWeight
-      
-      // If no air temp data but have wind data, use seasonal default
-      if (avgAirTemp === 0) {
-        avgAirTemp = 65 + Math.sin((new Date().getMonth() - 2) * Math.PI / 6) * 10
-      }
     }
     
     // Apply section-specific characteristics
@@ -551,13 +562,11 @@ function processSectionWaveData(
     // Apply section-specific wind characteristics (wind data is already in knots from API)
     const finalWindSpeed = Math.max(0, Math.min(35, avgWindSpeed + sectionMultipliers.windOffset))
     const finalWindDirection = avgWindDirection
-    const finalAirTemp = Math.max(40, Math.min(95, avgAirTemp + sectionMultipliers.tempOffset))
     
     // Convert units (Open-Meteo uses meters, we want feet for display)
     const waveHeightFeet = Math.max(0.5, Math.min(15, finalHeight * 3.28084))
     const wavePeriodSeconds = Math.max(5, Math.min(25, finalPeriod))
     const windSpeedKnots = Math.max(0, Math.min(30, finalWindSpeed))
-    const airTempF = Math.max(40, Math.min(95, finalAirTemp))
     
     // Get location factor for this section
     const locationFactor = getLocationFactor(section.name)
@@ -571,9 +580,16 @@ function processSectionWaveData(
       windDirection: finalWindDirection
     }, locationFactor)
     
-    // Calculate water temperature based on season and location
-    const baseWaterTemp = 64 + Math.sin((new Date().getMonth() - 2) * Math.PI / 6) * 8
-    const waterTempF = baseWaterTemp + sectionMultipliers.tempOffset
+    // Use real water temperature from API with validation
+    // Ensure water temperature is reasonable for LA (50-80°F typical range)
+    const waterTempF = avgWaterTemp > 0 && avgWaterTemp >= 45 && avgWaterTemp <= 85 
+      ? avgWaterTemp 
+      : 62 // Default to typical LA water temperature if invalid
+    
+    // Ensure air temperature is reasonable for LA (40-100°F typical range)  
+    const airTempF = avgAirTemp > 0 && avgAirTemp >= 35 && avgAirTemp <= 110
+      ? avgAirTemp
+      : 68 // Default to typical LA air temperature if invalid
     
     // Get tide data for this section - use nearest tide station
     let tideHeight = 2.5 // Default tide height in feet
@@ -624,12 +640,18 @@ function findFirstNonNullPairIndex(a: (number|null)[], b: (number|null)[]): numb
   return -1
 }
 
+function findFirstNonNullIndex(a: (number|null)[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== null) return i
+  }
+  return -1
+}
+
 function getSectionCharacteristics(sectionName: string) {
   return SECTION_CHARACTERISTICS[sectionName] ?? {
     heightMultiplier: 1.0,
     periodMultiplier: 1.0,
     directionOffset: 0,
-    windOffset: 0,
-    tempOffset: 0
+    windOffset: 0
   }
 }

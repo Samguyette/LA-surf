@@ -32,6 +32,7 @@ export interface OpenMeteoResponse {
     wave_height?: number | null
     wave_direction?: number | null
     wave_period?: number | null
+    sea_surface_temperature?: number | null
     wind_speed_10m?: number | null
     wind_direction_10m?: number | null
     temperature_2m?: number | null
@@ -44,6 +45,7 @@ export interface OpenMeteoResponse {
     swell_wave_height?: (number | null)[]
     swell_wave_direction?: (number | null)[]
     swell_wave_period?: (number | null)[]
+    sea_surface_temperature?: (number | null)[]
     wind_speed_10m?: (number | null)[]
     wind_direction_10m?: (number | null)[]
     temperature_2m?: (number | null)[]
