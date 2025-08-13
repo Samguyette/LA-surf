@@ -618,7 +618,6 @@ export function findNearestCoastlinePoint(lat: number, lng: number): CoastlinePo
   let minDistance = Infinity
   
   for (const point of LA_COASTLINE_POINTS) {
-    // Short comment: use squared distance for faster comparisons (ordering identical)
     const d2 = distanceSquared(point.lat, point.lng, lat, lng)
     
     if (d2 < minDistance) {

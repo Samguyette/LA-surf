@@ -241,7 +241,6 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
   )
 }
 
-// Short comment: shared helper centralizes nearest wave point search (same selection logic)
 function findNearestWavePoint(waveData: WaveDataPoint[], lat: number, lng: number) {
   let nearest = waveData[0]
   let best = Infinity
@@ -265,7 +264,6 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
   const qualityClass = `wave-quality-score ${qualityLevel}`
   const qualityColor = getQualityColorRGB(point.qualityScore)
   
-  // Format timestamp
   const updateTime = new Date(point.timestamp).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',

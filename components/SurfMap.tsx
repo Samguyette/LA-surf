@@ -116,8 +116,7 @@ export default function SurfMap() {
       setError(null)
       console.log('Fetching fresh wave data at:', new Date().toISOString())
       
-      // Short comment: request fresh data each time while caching is disabled
-      const response = await fetch(`/api/wave-data?t=${Date.now()}`, { 
+      const response = await fetch('/api/wave-data', { 
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
