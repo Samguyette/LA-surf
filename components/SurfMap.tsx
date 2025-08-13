@@ -7,6 +7,7 @@ import { WaveDataPoint, WaveDataAPIResponse } from '@/types/wave-data'
 import { getCoastlineBounds } from '@/data/coastline'
 import CoastlineLayer from '@/components/CoastlineLayer'
 import RefreshIndicator from '@/components/RefreshIndicator'
+import SectionRibbon from '@/components/SectionRibbon'
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -56,6 +57,43 @@ function MapBoundsController({ bounds }: MapBoundsControllerProps) {
   return null
 }
 
+interface MapCenterTrackerProps {
+  onCenterChange: (center: { lat: number; lng: number }) => void
+  onMapReady: (map: L.Map) => void
+}
+
+/**
+ * Component to track map center changes
+ */
+function MapCenterTracker({ onCenterChange, onMapReady }: MapCenterTrackerProps) {
+  const map = useMap()
+  
+  useEffect(() => {
+    // Set map reference for parent component
+    onMapReady(map)
+    
+    // Set initial center
+    const initialCenter = map.getCenter()
+    onCenterChange({ lat: initialCenter.lat, lng: initialCenter.lng })
+    
+    // Listen for map movement events
+    const handleMoveEnd = () => {
+      const center = map.getCenter()
+      onCenterChange({ lat: center.lat, lng: center.lng })
+    }
+    
+    map.on('moveend', handleMoveEnd)
+    map.on('zoomend', handleMoveEnd)
+    
+    return () => {
+      map.off('moveend', handleMoveEnd)
+      map.off('zoomend', handleMoveEnd)
+    }
+  }, [map, onCenterChange, onMapReady])
+  
+  return null
+}
+
 /**
  * Main surf map component displaying LA County coastline with wave conditions
  */
@@ -65,6 +103,8 @@ export default function SurfMap() {
   const [isCoastlineLoading, setIsCoastlineLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined)
+  const [mapRef, setMapRef] = useState<L.Map | null>(null)
 
   /**
    * Fetch wave data from the API
@@ -119,6 +159,8 @@ export default function SurfMap() {
     return () => clearInterval(interval)
   }, [fetchWaveData])
 
+
+
   // Get center point for map
   const bounds = getCoastlineBounds()
   const center: [number, number] = [
@@ -164,11 +206,19 @@ export default function SurfMap() {
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      {/* Section ribbon */}
+      {waveData.length > 0 && (
+        <SectionRibbon 
+          waveData={waveData} 
+          mapCenter={mapCenter}
+        />
+      )}
+      
       <MapContainer
         center={center}
         zoom={11}
         style={{ width: '100%', height: '100%' }}
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         doubleClickZoom={true}
         keyboard={true}
@@ -185,6 +235,9 @@ export default function SurfMap() {
         
         {/* Bounds controller */}
         <MapBoundsController bounds={LA_BOUNDS} />
+        
+        {/* Map center tracker */}
+        <MapCenterTracker onCenterChange={setMapCenter} onMapReady={setMapRef} />
         
         {/* Coastline with wave data */}
         {waveData.length > 0 && (

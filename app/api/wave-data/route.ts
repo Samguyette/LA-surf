@@ -3,6 +3,7 @@ import NodeCache from 'node-cache'
 import { WaveDataPoint, OpenMeteoResponse } from '@/types/wave-data'
 import { calculateWaveQuality, getLocationFactor } from '@/utils/waveQuality'
 import { LA_COASTLINE_POINTS, isInMarinaExclusionZone } from '@/data/coastline'
+import { COASTLINE_SECTIONS, CoastlineSection } from '@/data/coastlineSections'
 
 // Cache for 20 minutes (1200 seconds)
 const cache = new NodeCache({ stdTTL: 1200 })
@@ -139,73 +140,9 @@ async function processWaveDataForCoastline(openMeteoData: OpenMeteoResponse[]): 
   // Process coastline data by dividing into sections for better spatial resolution
   const coastlineData: WaveDataPoint[] = []
   
-  // Divide coastline into detailed sections for highly accurate wave data
-  // Increased from 4 to 12 sections for much better granularity
-  const coastlineSections = [
-    {
-      name: 'Oxnard/Ventura County',
-      points: LA_COASTLINE_POINTS.slice(0, 3), // North Starting Point to Silver Strand Beach
-      bounds: { north: 34.1950, south: 33.9900, west: -119.2785, east: -118.8200 }
-    },
-    {
-      name: 'Zuma/Point Dume',
-      points: LA_COASTLINE_POINTS.slice(3, 6), // Zuma Beach to Point Dume
-      bounds: { north: 34.1823, south: 33.9745, west: -119.0001, east: -118.5200 }
-    },
-    {
-      name: 'Malibu Point/Surfrider',
-      points: LA_COASTLINE_POINTS.slice(6, 10), // Malibu Point to Malibu Lagoon
-      bounds: { north: 34.1678, south: 33.9456, west: -118.9001, east: -118.4778 }
-    },
-    {
-      name: 'Malibu Creek/Big Rock',
-      points: LA_COASTLINE_POINTS.slice(10, 13), // Malibu Creek to Las Flores Beach
-      bounds: { north: 34.1420, south: 33.9380, west: -118.7650, east: -118.3800 }
-    },
-    {
-      name: 'Topanga/Sunset Point',
-      points: LA_COASTLINE_POINTS.slice(13, 16), // Topanga Beach to Castle Rock
-      bounds: { north: 34.1367, south: 33.9320, west: -118.6334, east: -118.3100 }
-    },
-    {
-      name: 'Will Rogers/Santa Monica',
-      points: LA_COASTLINE_POINTS.slice(16, 21), // Will Rogers Beach to Santa Monica Pier
-      bounds: { north: 34.1301, south: 33.9189, west: -118.6001, east: -118.2445 }
-    },
-    {
-      name: 'Santa Monica Pier/Venice',
-      points: LA_COASTLINE_POINTS.slice(21, 26), // Ocean Park to Marina del Rey
-      bounds: { north: 34.1150, south: 33.9050, west: -118.6350, east: -118.2000 }
-    },
-    {
-      name: 'Venice/El Segundo',
-      points: LA_COASTLINE_POINTS.slice(26, 30), // Dockweiler State Beach to Playa del Rey Beach
-      bounds: { north: 34.0991, south: 33.8850, west: -118.5181, east: -118.2100 }
-    },
-    {
-      name: 'Manhattan Beach/Hermosa',
-      points: LA_COASTLINE_POINTS.slice(30, 38), // Manhattan Beach North to Hermosa Beach South
-      bounds: { north: 33.9844, south: 33.7563, west: -118.5085, east: -118.1929 }
-    },
-    {
-      name: 'Hermosa/Redondo Beach',
-      points: LA_COASTLINE_POINTS.slice(38, 41), // Redondo Beach North to Redondo Beach
-      bounds: { north: 33.9485, south: 33.7375, west: -118.4889, east: -118.1821 }
-    },
-    {
-      name: 'Redondo/Palos Verdes',
-      points: LA_COASTLINE_POINTS.slice(41, 48), // Redondo Beach South to Bluff Cove
-      bounds: { north: 33.9320, south: 33.6800, west: -118.4787, east: -118.1400 }
-    },
-    {
-      name: 'Palos Verdes Peninsula',
-      points: LA_COASTLINE_POINTS.slice(48, 53), // Palos Verdes Peninsula to Rancho Palos Verdes
-      bounds: { north: 33.9445, south: 33.6445, west: -118.4870, east: -118.1170 }
-    }
-  ]
-  
+  // Use shared coastline sections configuration to eliminate duplication
   // Process each section separately to get more varied data
-  for (const section of coastlineSections) {
+  for (const section of COASTLINE_SECTIONS) {
     const sectionData = await processSectionWaveData(openMeteoData, section)
     coastlineData.push(...sectionData)
   }
@@ -213,11 +150,7 @@ async function processWaveDataForCoastline(openMeteoData: OpenMeteoResponse[]): 
   return coastlineData
 }
 
-interface CoastlineSection {
-  name: string
-  points: typeof LA_COASTLINE_POINTS
-  bounds: { north: number; south: number; west: number; east: number }
-}
+
 
 async function processSectionWaveData(
   openMeteoData: OpenMeteoResponse[], 

@@ -1,0 +1,158 @@
+/* Section Ribbon Component Styles */
+
+.sectionRibbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.75) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 0;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+}
+
+.sectionRibbonContent {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sectionRibbonContent::-webkit-scrollbar {
+  display: none;
+}
+
+.sectionsContainer {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px;
+  min-width: max-content;
+}
+
+.sectionItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.qualityDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+}
+
+.sectionText {
+  color: white;
+  text-align: left;
+  min-width: 0;
+}
+
+.sectionName {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.locationPart {
+  white-space: nowrap;
+  line-height: 1.0;
+  margin: 1px 0;
+}
+
+.sectionStats {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  margin-top: 2px;
+  opacity: 0.9;
+}
+
+.waveHeight {
+  font-weight: 500;
+  color: #60a5fa;
+}
+
+.qualityScore {
+  font-weight: 500;
+  color: #34d399;
+}
+
+/* Mobile responsive design */
+@media (max-width: 768px) {
+  .sectionRibbon {
+    padding: 6px 0;
+  }
+
+  .sectionsContainer {
+    gap: 6px;
+    padding: 0 12px;
+  }
+
+  .sectionItem {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .sectionName {
+    font-size: 11px;
+  }
+
+  .sectionStats {
+    font-size: 9px;
+    gap: 6px;
+  }
+
+  .qualityDot {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+  .sectionRibbon {
+    padding: 4px 0;
+  }
+
+  .sectionsContainer {
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .sectionItem {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .sectionName {
+    font-size: 10px;
+  }
+
+  .sectionStats {
+    font-size: 8px;
+    gap: 4px;
+  }
+
+  .qualityDot {
+    width: 8px;
+    height: 8px;
+  }
+}
