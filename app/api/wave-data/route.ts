@@ -22,21 +22,26 @@ const OPEN_METEO_LONGITUDES = [
 ] as const
 
 /**
- * Open-Meteo Marine Weather API Route
+ * Open-Meteo Weather API Route
  * 
- * This route fetches wave data from Open-Meteo's free marine weather API.
+ * This route fetches both wave and wind data from Open-Meteo's free APIs.
  * 
- * API: Open-Meteo Marine Weather API (https://open-meteo.com/en/docs/marine-weather-api)
- * Variables used:
- * - wave_height: Significant wave height (meters)
- * - wave_period: Peak wave period (seconds) 
- * - wave_direction: Peak wave direction (degrees)
- * - swell_wave_height: Swell wave height (meters)
- * - swell_wave_period: Swell wave period (seconds)
- * - swell_wave_direction: Swell wave direction (degrees)
+ * APIs Used:
+ * 1. Marine Weather API (https://open-meteo.com/en/docs/marine-weather-api)
+ *    Variables: wave_height, wave_period, wave_direction, swell_wave_height, 
+ *              swell_wave_period, swell_wave_direction
+ * 
+ * 2. Forecast API (https://open-meteo.com/en/docs)
+ *    Variables: wind_speed_10m (knots), wind_direction_10m (degrees)
+ * 
+ * Enhanced Features:
+ * - Real-time wind data integration for accurate surf quality assessment
+ * - Wind direction analysis (offshore vs onshore) significantly impacts scoring
+ * - Wind conditions now carry 35% weight in quality calculation
+ * - Parallel API calls for optimal performance
  * 
  * The data is cached server-side to improve performance and reduce API calls.
- * Cache duration: 20 minutes to balance data freshness with API responsiveness.
+ * Cache duration: 10 minutes to balance data freshness with API responsiveness.
  */
 
 export async function GET(request: NextRequest) {
@@ -73,13 +78,13 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch fresh data from Open-Meteo
-    const waveData = await fetchOpenMeteoWaveData()
+    const { waveData, windData } = await fetchOpenMeteoWaveData()
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`Received data from ${waveData.length} stations`)
+      console.log(`Received data from ${waveData.length} wave stations and ${windData.length} wind stations`)
     }
     
     // Process and interpolate data for LA coastline points
-    const processedData = await processWaveDataForCoastline(waveData)
+    const processedData = await processWaveDataForCoastline(waveData, windData)
     if (process.env.NODE_ENV !== 'production') {
       console.log(`Processed ${processedData.length} coastline points`)
     }
@@ -148,29 +153,40 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function fetchOpenMeteoWaveData(): Promise<OpenMeteoResponse[]> {
+async function fetchOpenMeteoWaveData(): Promise<{ waveData: OpenMeteoResponse[]; windData: OpenMeteoResponse[] }> {
   try {
-    const response = await tryOpenMeteoEndpoint()
-    const data = await response.json()
+    const { waveResponse, windResponse } = await tryOpenMeteoEndpoint()
+    
+    const [waveData, windData] = await Promise.all([
+      waveResponse.json(),
+      windResponse.json()
+    ])
+    
     // Open-Meteo returns an array of station data
-    return Array.isArray(data) ? data : [data]
+    const normalizedWaveData = Array.isArray(waveData) ? waveData : [waveData]
+    const normalizedWindData = Array.isArray(windData) ? windData : [windData]
+    
+    return { 
+      waveData: normalizedWaveData, 
+      windData: normalizedWindData 
+    }
   } catch (error) {
     console.error('Open-Meteo API error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    throw new Error(`Failed to fetch wave data from Open-Meteo: ${errorMessage}`)
+    throw new Error(`Failed to fetch wave and wind data from Open-Meteo: ${errorMessage}`)
   }
 }
 
-async function tryOpenMeteoEndpoint(): Promise<Response> {
+async function tryOpenMeteoEndpoint(): Promise<{ waveResponse: Response; windResponse: Response }> {
   // Define high-resolution LA County coastline coordinate grid
   // Optimized for 10 lats x 10 lons = 100 coordinates (max tested limit)
   // This provides much better resolution than the original 8x8 = 64 coordinates
   const latitudes = OPEN_METEO_LATITUDES
   const longitudes = OPEN_METEO_LONGITUDES
   
-  // Build the API URL with multiple coordinates for single call
-  const baseUrl = OPEN_METEO_BASE
-  const params = new URLSearchParams({
+  // Build the marine API URL for wave data
+  const marineBaseUrl = OPEN_METEO_BASE
+  const marineParams = new URLSearchParams({
     latitude: latitudes.join(','),
     longitude: longitudes.join(','),
     current: 'wave_height,wave_direction,wave_period',
@@ -179,34 +195,61 @@ async function tryOpenMeteoEndpoint(): Promise<Response> {
     timezone: 'America/Los_Angeles'
   })
   
-  const endpoint = `${baseUrl}?${params.toString()}`
-  
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`Fetching wave data from Open-Meteo API...`)
-  }
-  
-  const response = await fetch(endpoint, {
-    headers: {
-      'User-Agent': 'LA-Surf-App/1.0',
-    },
-    signal: AbortSignal.timeout(10000)
+  // Build the forecast API URL for wind data  
+  const forecastBaseUrl = 'https://api.open-meteo.com/v1/forecast'
+  const windParams = new URLSearchParams({
+    latitude: latitudes.join(','),
+    longitude: longitudes.join(','),
+    current: 'wind_speed_10m,wind_direction_10m',
+    hourly: 'wind_speed_10m,wind_direction_10m',
+    forecast_days: '1',
+    timezone: 'America/Los_Angeles',
+    wind_speed_unit: 'kn' // Get wind speed in knots directly
   })
   
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+  const waveEndpoint = `${marineBaseUrl}?${marineParams.toString()}`
+  const windEndpoint = `${forecastBaseUrl}?${windParams.toString()}`
+  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Fetching wave and wind data from Open-Meteo APIs...`)
+  }
+  
+  // Fetch both wave and wind data in parallel
+  const [waveResponse, windResponse] = await Promise.all([
+    fetch(waveEndpoint, {
+      headers: {
+        'User-Agent': 'LA-Surf-App/1.0',
+      },
+      signal: AbortSignal.timeout(10000)
+    }),
+    fetch(windEndpoint, {
+      headers: {
+        'User-Agent': 'LA-Surf-App/1.0',
+      },
+      signal: AbortSignal.timeout(10000)
+    })
+  ])
+  
+  if (!waveResponse.ok) {
+    throw new Error(`Marine API HTTP ${waveResponse.status}: ${waveResponse.statusText}`)
+  }
+  
+  if (!windResponse.ok) {
+    throw new Error(`Forecast API HTTP ${windResponse.status}: ${windResponse.statusText}`)
   }
   
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`Successfully fetched wave data from Open-Meteo`)
+    console.log(`Successfully fetched wave and wind data from Open-Meteo`)
   }
-  return response
+  
+  return { waveResponse, windResponse }
 }
 
-async function processWaveDataForCoastline(openMeteoData: OpenMeteoResponse[]): Promise<WaveDataPoint[]> {
+async function processWaveDataForCoastline(waveData: OpenMeteoResponse[], windData: OpenMeteoResponse[]): Promise<WaveDataPoint[]> {
   const coastlineData: WaveDataPoint[] = []
   
   for (const section of COASTLINE_SECTIONS) {
-    const sectionData = processSectionWaveData(openMeteoData, section)
+    const sectionData = processSectionWaveData(waveData, windData, section)
     coastlineData.push(...sectionData)
   }
   
@@ -216,15 +259,30 @@ async function processWaveDataForCoastline(openMeteoData: OpenMeteoResponse[]): 
 
 
 function processSectionWaveData(
-  openMeteoData: OpenMeteoResponse[], 
+  waveData: OpenMeteoResponse[], 
+  windData: OpenMeteoResponse[],
   section: CoastlineSection
 ): WaveDataPoint[] {
-  if (!openMeteoData || openMeteoData.length === 0) {
+  if (!waveData || waveData.length === 0) {
     throw new Error('No wave data available from Open-Meteo')
   }
   
-  // Filter Open-Meteo data to this section's geographic bounds
-  const sectionStations = openMeteoData.filter((station: OpenMeteoResponse) => {
+  if (!windData || windData.length === 0) {
+    throw new Error('No wind data available from Open-Meteo')
+  }
+  
+  // Filter wave data to this section's geographic bounds
+  const sectionWaveStations = waveData.filter((station: OpenMeteoResponse) => {
+    return (
+      station.latitude >= section.bounds.south &&
+      station.latitude <= section.bounds.north &&
+      station.longitude >= section.bounds.west &&
+      station.longitude <= section.bounds.east
+    )
+  })
+  
+  // Filter wind data to this section's geographic bounds
+  const sectionWindStations = windData.filter((station: OpenMeteoResponse) => {
     return (
       station.latitude >= section.bounds.south &&
       station.latitude <= section.bounds.north &&
@@ -234,7 +292,8 @@ function processSectionWaveData(
   })
   
   // If no specific data for this section, use all available stations
-  const stationsToUse = sectionStations.length > 0 ? sectionStations : openMeteoData
+  const waveStationsToUse = sectionWaveStations.length > 0 ? sectionWaveStations : waveData
+  const windStationsToUse = sectionWindStations.length > 0 ? sectionWindStations : windData
   
   // Add some realistic regional variation based on section characteristics
   const sectionMultipliers = getSectionCharacteristics(section.name)
@@ -242,8 +301,8 @@ function processSectionWaveData(
   return section.points
     .filter(point => !isInMarinaExclusionZone(point.lat, point.lng)) // Exclude marina entrance points
     .map((point, index) => {
-    // Find multiple nearby stations and weight them by distance
-    const nearbyStations = stationsToUse
+    // Find multiple nearby wave stations and weight them by distance
+    const nearbyWaveStations = waveStationsToUse
       .map((station: OpenMeteoResponse) => {
         const distance = Math.sqrt(
           Math.pow(station.latitude - point.lat, 2) + Math.pow(station.longitude - point.lng, 2)
@@ -253,37 +312,52 @@ function processSectionWaveData(
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 3) // Use top 3 nearest stations
     
-    if (nearbyStations.length === 0) {
-      throw new Error('No nearby weather stations found')
+    // Find multiple nearby wind stations and weight them by distance
+    const nearbyWindStations = windStationsToUse
+      .map((station: OpenMeteoResponse) => {
+        const distance = Math.sqrt(
+          Math.pow(station.latitude - point.lat, 2) + Math.pow(station.longitude - point.lng, 2)
+        )
+        return { station, distance }
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3) // Use top 3 nearest stations
+    
+    if (nearbyWaveStations.length === 0) {
+      throw new Error('No nearby wave stations found')
     }
     
-    // Average the nearby station data using inverse distance weighting
-    let totalWeight = 0
+    if (nearbyWindStations.length === 0) {
+      throw new Error('No nearby wind stations found')
+    }
+    
+    // Average the nearby wave station data using inverse distance weighting
+    let waveWeight = 0
     let weightedHeight = 0, weightedPeriod = 0, weightedDirection = 0
     let weightedSwellHeight = 0, weightedSwellPeriod = 0
     let avgHeight = 0, avgPeriod = 0, avgDirection = 0
     let avgSwellHeight = 0, avgSwellPeriod = 0
     
-    for (const { station, distance } of nearbyStations) {
+    for (const { station, distance } of nearbyWaveStations) {
       const weight = 1 / (distance + 0.01) // Inverse distance weighting
       
       // Use current data if available, otherwise use latest hourly data with actual values
-      let currentHeight = station.current.wave_height
-      let currentPeriod = station.current.wave_period
-      let currentDirection = station.current.wave_direction
+      let currentHeight = station.current.wave_height ?? null
+      let currentPeriod = station.current.wave_period ?? null
+      let currentDirection = station.current.wave_direction ?? null
       
       // If current data is null, try to use hourly data
       if (currentHeight === null || currentPeriod === null || currentDirection === null) {
         // Short comment: use helper to get first non-null triple for readability
         const idx = findFirstNonNullTripletIndex(
-          station.hourly.wave_height,
-          station.hourly.wave_period,
-          station.hourly.wave_direction
+          station.hourly.wave_height || [],
+          station.hourly.wave_period || [],
+          station.hourly.wave_direction || []
         )
         if (idx !== -1) {
-          currentHeight = station.hourly.wave_height[idx]
-          currentPeriod = station.hourly.wave_period[idx]
-          currentDirection = station.hourly.wave_direction[idx]
+          currentHeight = station.hourly.wave_height?.[idx] ?? null
+          currentPeriod = station.hourly.wave_period?.[idx] ?? null
+          currentDirection = station.hourly.wave_direction?.[idx] ?? null
         }
       }
       
@@ -295,12 +369,12 @@ function processSectionWaveData(
         // Get swell data from hourly (use first non-null values)
         let swellHeight = null, swellPeriod = null
         const swellIdx = findFirstNonNullPairIndex(
-          station.hourly.swell_wave_height,
-          station.hourly.swell_wave_period
+          station.hourly.swell_wave_height || [],
+          station.hourly.swell_wave_period || []
         )
         if (swellIdx !== -1) {
-          swellHeight = station.hourly.swell_wave_height[swellIdx]
-          swellPeriod = station.hourly.swell_wave_period[swellIdx]
+          swellHeight = station.hourly.swell_wave_height?.[swellIdx] || null
+          swellPeriod = station.hourly.swell_wave_period?.[swellIdx] || null
         }
         
         if (swellHeight !== null && swellPeriod !== null) {
@@ -308,12 +382,43 @@ function processSectionWaveData(
           weightedSwellPeriod += swellPeriod * weight
         }
         
-        totalWeight += weight
+        waveWeight += weight
       }
     }
     
-    if (totalWeight === 0) {
-      // If no valid data found, use a reasonable default based on location and season
+    // Average the nearby wind station data using inverse distance weighting  
+    let windWeight = 0
+    let weightedWindSpeed = 0, weightedWindDirection = 0
+    let avgWindSpeed = 0, avgWindDirection = 0
+    
+    for (const { station, distance } of nearbyWindStations) {
+      const weight = 1 / (distance + 0.01) // Inverse distance weighting
+      
+      // Use current data if available, otherwise use latest hourly data
+      let currentWindSpeed = station.current.wind_speed_10m ?? null
+      let currentWindDirection = station.current.wind_direction_10m ?? null
+      
+      // If current data is null, try to use hourly data
+      if (currentWindSpeed === null || currentWindDirection === null) {
+        const idx = findFirstNonNullPairIndex(
+          station.hourly.wind_speed_10m || [],
+          station.hourly.wind_direction_10m || []
+        )
+        if (idx !== -1) {
+          currentWindSpeed = station.hourly.wind_speed_10m?.[idx] ?? null
+          currentWindDirection = station.hourly.wind_direction_10m?.[idx] ?? null
+        }
+      }
+      
+      if (currentWindSpeed !== null && currentWindDirection !== null) {
+        weightedWindSpeed += currentWindSpeed * weight
+        weightedWindDirection += currentWindDirection * weight
+        windWeight += weight
+      }
+    }
+    
+    if (waveWeight === 0) {
+      // If no valid wave data found, use a reasonable default based on location and season
       console.warn(`No valid wave data for point ${point.lat}, ${point.lng}, using defaults`)
       const fallbackHeight = 1.0 + Math.random() * 0.5 // 1.0-1.5 meters
       const fallbackPeriod = 10 + Math.random() * 3 // 10-13 seconds  
@@ -325,12 +430,23 @@ function processSectionWaveData(
       avgSwellHeight = fallbackHeight * 0.7
       avgSwellPeriod = fallbackPeriod + 2
     } else {
-      // Calculate weighted averages
-      avgHeight = weightedHeight / totalWeight
-      avgPeriod = weightedPeriod / totalWeight
-      avgDirection = weightedDirection / totalWeight
-      avgSwellHeight = weightedSwellHeight / totalWeight
-      avgSwellPeriod = weightedSwellPeriod / totalWeight
+      // Calculate weighted averages for wave data
+      avgHeight = weightedHeight / waveWeight
+      avgPeriod = weightedPeriod / waveWeight
+      avgDirection = weightedDirection / waveWeight
+      avgSwellHeight = weightedSwellHeight / waveWeight
+      avgSwellPeriod = weightedSwellPeriod / waveWeight
+    }
+    
+    if (windWeight === 0) {
+      // If no valid wind data found, use a reasonable default
+      console.warn(`No valid wind data for point ${point.lat}, ${point.lng}, using defaults`)
+      avgWindSpeed = 8 + Math.random() * 6 // 8-14 knots (already in knots from API)
+      avgWindDirection = 280 + Math.random() * 40 // Generally westerly for LA
+    } else {
+      // Calculate weighted averages for wind data
+      avgWindSpeed = weightedWindSpeed / windWeight
+      avgWindDirection = weightedWindDirection / windWeight
     }
     
     // Apply section-specific characteristics
@@ -338,17 +454,14 @@ function processSectionWaveData(
     const finalPeriod = Math.max(6, Math.min(20, avgPeriod * sectionMultipliers.periodMultiplier))
     const finalDirection = avgDirection + sectionMultipliers.directionOffset
     
-    // Estimate wind speed based on wave conditions and location
-    // Open-Meteo doesn't provide wind in marine API, so we estimate from waves
-    const estimatedWindSpeed = Math.min(
-      Math.max(2, finalHeight * 3 + sectionMultipliers.windOffset + (Math.random() * 5)), 
-      25
-    )
+    // Apply section-specific wind characteristics (wind data is already in knots from API)
+    const finalWindSpeed = Math.max(0, Math.min(35, avgWindSpeed + sectionMultipliers.windOffset))
+    const finalWindDirection = avgWindDirection
     
     // Convert units (Open-Meteo uses meters, we want feet for display)
     const waveHeightFeet = Math.max(0.5, Math.min(15, finalHeight * 3.28084))
     const wavePeriodSeconds = Math.max(5, Math.min(25, finalPeriod))
-    const windSpeedKnots = Math.max(0, Math.min(30, estimatedWindSpeed))
+    const windSpeedKnots = Math.max(0, Math.min(30, finalWindSpeed))
     
     // Get location factor for this section
     const locationFactor = getLocationFactor(section.name)
@@ -358,7 +471,8 @@ function processSectionWaveData(
       waveHeight: waveHeightFeet,
       wavePeriod: wavePeriodSeconds,
       windSpeed: windSpeedKnots,
-      waveDirection: finalDirection
+      waveDirection: finalDirection,
+      windDirection: finalWindDirection
     }, locationFactor)
     
     // Calculate water temperature based on season and location
@@ -380,7 +494,7 @@ function processSectionWaveData(
   })
 }
 
-// Short comment: helpers to find the first index where multiple arrays have non-null values at same position
+// helpers to find the first index where multiple arrays have non-null values at same position
 function findFirstNonNullTripletIndex(a: (number|null)[], b: (number|null)[], c: (number|null)[]): number {
   const len = Math.min(a.length, b.length, c.length)
   for (let i = 0; i < len; i++) {
@@ -398,7 +512,6 @@ function findFirstNonNullPairIndex(a: (number|null)[], b: (number|null)[]): numb
 }
 
 function getSectionCharacteristics(sectionName: string) {
-  // Short comment: read characteristics from central map to keep API and UI consistent
   return SECTION_CHARACTERISTICS[sectionName] ?? {
     heightMultiplier: 1.0,
     periodMultiplier: 1.0,

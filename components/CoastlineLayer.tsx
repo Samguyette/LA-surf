@@ -313,6 +313,17 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
       )}
 
       <div className="updated-time">Updated: {updateTime}</div>
+      <div className="data-source">
+        Data sourced from{' '}
+        <a 
+          href="https://open-meteo.com/en/docs/marine-weather-api" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="data-source-link"
+        >
+          Open Meteo
+        </a>
+      </div>
     </div>
   )
 }

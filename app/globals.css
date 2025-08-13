@@ -194,6 +194,23 @@ html, body {
   padding-top: 6px;
 }
 
+.data-source {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.data-source-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.data-source-link:hover {
+  text-decoration: underline;
+  color: #2563eb;
+}
+
 /* Loading spinner */
 .loading-spinner {
   position: fixed;
@@ -351,6 +368,14 @@ html, body {
     margin: 16px 20px;
     min-width: 260px;
   }
+  
+  /* Mobile refresh indicator adjustments */
+  .refresh-indicator {
+    bottom: 20px;
+    left: 16px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
 }
 
 /* Attribution */
@@ -383,14 +408,29 @@ html, body {
 }
 
 /* Mobile responsiveness for attribution */
+@media (max-width: 768px) {
+  .attribution {
+    bottom: 20px;
+    right: 8px;
+  }
+}
+
 @media (max-width: 480px) {
   .attribution {
-    bottom: 50px;
+    bottom: 20px;
     right: 8px;
   }
 
   .attributionLink {
     font-size: 10px;
     padding: 3px 6px;
+  }
+  
+  /* Very small screen refresh indicator adjustments */
+  .refresh-indicator {
+    bottom: 20px;
+    left: 12px;
+    padding: 5px 10px;
+    font-size: 10px;
   }
 }

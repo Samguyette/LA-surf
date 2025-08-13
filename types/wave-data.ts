@@ -26,18 +26,22 @@ export interface OpenMeteoResponse {
   longitude: number
   current: {
     time: string
-    wave_height: number | null
-    wave_direction: number | null
-    wave_period: number | null
+    wave_height?: number | null
+    wave_direction?: number | null
+    wave_period?: number | null
+    wind_speed_10m?: number | null
+    wind_direction_10m?: number | null
   }
   hourly: {
     time: string[]
-    wave_height: (number | null)[]
-    wave_direction: (number | null)[]
-    wave_period: (number | null)[]
-    swell_wave_height: (number | null)[]
-    swell_wave_direction: (number | null)[]
-    swell_wave_period: (number | null)[]
+    wave_height?: (number | null)[]
+    wave_direction?: (number | null)[]
+    wave_period?: (number | null)[]
+    swell_wave_height?: (number | null)[]
+    swell_wave_direction?: (number | null)[]
+    swell_wave_period?: (number | null)[]
+    wind_speed_10m?: (number | null)[]
+    wind_direction_10m?: (number | null)[]
   }
 }
 
@@ -46,6 +50,7 @@ export interface WaveQualityInput {
   wavePeriod: number // seconds
   windSpeed: number // knots
   waveDirection?: number // degrees (optional)
+  windDirection?: number // degrees (optional)
 }
 
 export interface WaveDataAPIResponse {
