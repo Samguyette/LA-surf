@@ -80,49 +80,63 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
   }
 
   return (
-    <div className={styles.sectionRibbon}>
-      <div className={styles.sectionRibbonContent}>
-        <div className={styles.sectionsContainer}>
-          {allSections.map((section, index) => {
-            const qualityLevel = getWaveQualityLevel(section.avgQualityScore)
-            const qualityColor = getQualityColor(section.avgQualityScore)
-            
-            return (
-              <div 
-                key={section.name} 
-                className={styles.sectionItem}
-              >
+    <>
+      <div className={styles.sectionRibbon}>
+        <div className={styles.sectionRibbonContent}>
+          <div className={styles.sectionsContainer}>
+            {allSections.map((section, index) => {
+              const qualityLevel = getWaveQualityLevel(section.avgQualityScore)
+              const qualityColor = getQualityColor(section.avgQualityScore)
+              
+              return (
                 <div 
-                  className={styles.qualityDot} 
-                  style={{ backgroundColor: qualityColor }}
-                  title={`${section.avgQualityScore}/100 (${qualityLevel.toUpperCase()})`}
-                />
-                <div className={styles.sectionText}>
-                  <h3 className={styles.sectionName}>
-                    {section.name
-                      .split('/')
-                      .map(part =>
-                        part
-                          .trim()
-                          .split(' ')
-                          .map(
-                            word =>
-                              word.charAt(0).toUpperCase() + word.slice(1)
-                          )
-                          .join(' ')
-                      )
-                      .join(' - ')}
-                  </h3>
-                  <div className={styles.sectionStats}>
-                    <span className={styles.waveHeight}>{section.avgWaveHeight}ft</span>
-                    <span className={styles.qualityScore}>{section.avgQualityScore}</span>
+                  key={section.name} 
+                  className={styles.sectionItem}
+                >
+                  <div 
+                    className={styles.qualityDot} 
+                    style={{ backgroundColor: qualityColor }}
+                    title={`${section.avgQualityScore}/100 (${qualityLevel.toUpperCase()})`}
+                  />
+                  <div className={styles.sectionText}>
+                    <h3 className={styles.sectionName}>
+                      {section.name
+                        .split('/')
+                        .map(part =>
+                          part
+                            .trim()
+                            .split(' ')
+                            .map(
+                              word =>
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                            )
+                            .join(' ')
+                        )
+                        .join(' - ')}
+                    </h3>
+                    <div className={styles.sectionStats}>
+                      <span className={styles.waveHeight}>{section.avgWaveHeight}ft</span>
+                      <span className={styles.qualityScore}>{section.avgQualityScore}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
-    </div>
+      
+      {/* Attribution */}
+      <div className="attribution">
+        <a 
+          href="https://www.samguyette.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="attributionLink"
+        >
+          Made by Sam Guyette
+        </a>
+      </div>
+    </>
   )
 }
