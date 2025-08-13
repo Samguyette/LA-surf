@@ -285,6 +285,7 @@ interface WaveTooltipContentProps {
 function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentProps) {
   const qualityLevel = getWaveQualityLevel(point.qualityScore)
   const qualityClass = `wave-quality-score ${qualityLevel}`
+  const qualityColor = getQualityColorRGB(point.qualityScore)
   
   // Format timestamp
   const updateTime = new Date(point.timestamp).toLocaleTimeString('en-US', {
@@ -295,51 +296,47 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
 
   return (
     <div className="wave-quality-tooltip">
-      <h3>{coastlinePointName}</h3>
-      <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-        Surf Conditions
-      </div>
-      
-      <div style={{ marginBottom: '8px' }}>
-        <span className={qualityClass}>
-          {point.qualityScore}/100 ({qualityLevel.toUpperCase()})
+      <div className="wave-tooltip-header">
+        <h3 className="wave-tooltip-title">{coastlinePointName}</h3>
+        <span className={`wave-quality-badge ${qualityLevel}`}>
+          {qualityLevel.toUpperCase()} <span className="badge-score">{point.qualityScore}</span>
         </span>
       </div>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px' }}>
-        <div>
-          <strong>Wave Height:</strong><br />
-          {point.waveHeight} ft
+
+      <div className="wave-quality-meter" aria-label="Quality score">
+        <div
+          className="wave-quality-meter-fill"
+          style={{ width: `${point.qualityScore}%`, background: qualityColor }}
+        />
+      </div>
+
+      <div className="metric-grid">
+        <div className="metric-item">
+          <div className="metric-label">Wave Height</div>
+          <div className="metric-value">{point.waveHeight} ft</div>
         </div>
-        <div>
-          <strong>Wave Period:</strong><br />
-          {point.wavePeriod} sec
+        <div className="metric-item">
+          <div className="metric-label">Wave Period</div>
+          <div className="metric-value">{point.wavePeriod} sec</div>
         </div>
-        <div>
-          <strong>Wind Speed:</strong><br />
-          {point.windSpeed} kts
+        <div className="metric-item">
+          <div className="metric-label">Wind Speed</div>
+          <div className="metric-value">{point.windSpeed} kts</div>
         </div>
-        <div>
-          <strong>Water Temp:</strong><br />
-          {point.waterTemp}°F
+        <div className="metric-item">
+          <div className="metric-label">Water Temp</div>
+          <div className="metric-value">{point.waterTemp}°F</div>
         </div>
       </div>
-      
+
       {point.waveDirection && (
-        <div style={{ marginTop: '4px', fontSize: '11px' }}>
-          <strong>Wave Direction:</strong> {point.waveDirection}°
+        <div className="metric-row">
+          <span className="metric-label">Wave Direction</span>{' '}
+          <span className="metric-value">{point.waveDirection}°</span>
         </div>
       )}
-      
-      <div style={{ 
-        marginTop: '8px', 
-        fontSize: '10px', 
-        color: '#888',
-        borderTop: '1px solid #eee',
-        paddingTop: '4px'
-      }}>
-        Updated: {updateTime}
-      </div>
+
+      <div className="updated-time">Updated: {updateTime}</div>
     </div>
   )
 }
