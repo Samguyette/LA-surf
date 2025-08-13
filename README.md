@@ -6,7 +6,7 @@ Real-time surf condition visualization for Los Angeles County coastline, powered
 
 - 🗺️ **Interactive Map**: Fullscreen map with custom tiles and zoom controls
 - 🏄 **Section-Based View**: 12 distinct coastal sections from Oxnard to Palos Verdes
-- 🌊 **Live Wave Data**: NOAA WAVEWATCH III integration with quality scoring
+- 🌊 **Live Wave Data**: Open-Meteo Marine API integration with quality scoring
 - 🎨 **Color-Coded Coastline**: Red (poor) to green (excellent) surf conditions
 - 📊 **Section Ribbon**: Top bar showing all sections with scores and wave heights
 - 🔄 **Auto-refresh**: Updates every 20 minutes with caching
@@ -16,7 +16,7 @@ Real-time surf condition visualization for Los Angeles County coastline, powered
 
 - **Framework**: Next.js 14 (App Router) + TypeScript
 - **Mapping**: React Leaflet with custom MapTiler tiles
-- **Data**: NOAA WAVEWATCH III via ERDDAP API
+- **Data**: Open-Meteo Marine Weather API
 - **Caching**: Server-side with Node-cache
 
 ## Quick Start
@@ -36,12 +36,12 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## How It Works
 
-**Quality Algorithm**: Combines wave height (40%), period (35%), and wind speed (25%) from NOAA data into scores of 0-100.
+**Quality Algorithm**: Combines wave height (40%), period (35%), and wind speed (25%) from Open-Meteo data into scores of 0-100.
 
 **Coastal Sections**: 12 sections from Oxnard to Palos Verdes, each with averaged wave data and quality scores.
 
-**Data**: NOAA WAVEWATCH III via ERDDAP API, cached for 20 minutes, auto-refreshes.
+**Data**: Open-Meteo Marine Weather API with 100-point grid, cached for 20 minutes, auto-refreshes.
 
 ---
 
-Made by [Sam Guyette](https://www.samguyette.com) • Data: NOAA • For informational purposes only
+Made by [Sam Guyette](https://www.samguyette.com) • Data: Open-Meteo • For informational purposes only
