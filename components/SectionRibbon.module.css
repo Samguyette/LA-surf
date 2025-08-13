@@ -20,6 +20,7 @@
   overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  scroll-behavior: smooth;
 }
 
 .sectionRibbonContent::-webkit-scrollbar {

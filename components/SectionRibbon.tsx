@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { WaveDataPoint } from '@/types/wave-data'
 import { getQualityColor, getWaveQualityLevel } from '@/utils/waveQuality'
 import { COASTLINE_SECTIONS } from '@/data/coastlineSections'
@@ -24,6 +24,25 @@ interface SectionInfo {
  * their names, quality indicators, and average wave heights
  */
 export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current
+    if (!scrollContainer) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const scrollAmount = e.deltaY
+      scrollContainer.scrollLeft += scrollAmount
+    }
+
+    scrollContainer.addEventListener('wheel', handleWheel, { passive: false })
+    
+    return () => {
+      scrollContainer.removeEventListener('wheel', handleWheel)
+    }
+  }, [])
+
   // Short comment: memoize derived sections to avoid recalculation on render; mapCenter dependency kept to match original change pattern
   const allSections = useMemo<SectionInfo[]>(() => {
     if (!waveData || waveData.length === 0) {
@@ -73,7 +92,7 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
   return (
     <>
       <div className={styles.sectionRibbon}>
-        <div className={styles.sectionRibbonContent}>
+        <div className={styles.sectionRibbonContent} ref={scrollContainerRef}>
           <div className={styles.sectionsContainer}>
             {allSections.map((section, index) => {
               const qualityLevel = getWaveQualityLevel(section.avgQualityScore)
