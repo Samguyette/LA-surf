@@ -122,8 +122,7 @@ export default function SurfMap() {
   // Get center point for map
   const bounds = getCoastlineBounds()
   const center: [number, number] = [
-    (bounds.north + bounds.south) / 2,
-    (bounds.east + bounds.west) / 2
+    33.99025038212213,-118.65394136580532
   ]
 
   if (error && waveData.length === 0) {
@@ -167,7 +166,7 @@ export default function SurfMap() {
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       <MapContainer
         center={center}
-        zoom={10}
+        zoom={11}
         style={{ width: '100%', height: '100%' }}
         zoomControl={true}
         scrollWheelZoom={true}
