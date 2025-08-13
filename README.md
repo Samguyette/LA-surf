@@ -1,6 +1,6 @@
 # LA Surf Conditions
 
-Real-time surf condition visualization for Los Angeles County coastline, powered by NOAA wave data.
+Real-time surf condition visualization for Los Angeles County coastline, powered by Open-Meteo Marine Weather wave data.
 
 ## Features
 
