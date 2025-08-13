@@ -126,7 +126,6 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
         </div>
       </div>
       
-      {/* Attribution */}
       <div className="attribution">
         <a 
           href="https://www.samguyette.com" 
