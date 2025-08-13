@@ -102,7 +102,9 @@ export default function SurfMap() {
   const [isLoading, setIsLoading] = useState(true)
   const [isCoastlineLoading, setIsCoastlineLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [nextRefresh, setNextRefresh] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined)
   const handleMapReady = useCallback((map: L.Map) => {}, [])
 
@@ -136,28 +138,49 @@ export default function SurfMap() {
       setWaveData(result.data)
       setLastUpdate(new Date(result.timestamp))
       
+      if (result.nextRefresh) {
+        setNextRefresh(new Date(result.nextRefresh))
+      }
+      
       if (result.error) {
         setError(`Using cached data: ${result.error}`)
+      } else {
+        setError(null)
+        setRetryCount(0)
       }
       
     } catch (err) {
       console.error('Failed to fetch wave data:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch wave data')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch wave data'
+      setError(errorMessage)
+      
+      // Exponential backoff retry logic
+      const newRetryCount = retryCount + 1
+      setRetryCount(newRetryCount)
+      
+      if (newRetryCount <= 3) {
+        const retryDelay = Math.min(1000 * Math.pow(2, newRetryCount - 1), 30000)
+        console.log(`Retrying in ${retryDelay}ms (attempt ${newRetryCount}/3)`)
+        
+        setTimeout(() => {
+          fetchWaveData()
+        }, retryDelay)
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [retryCount])
 
   // Initial data load
   useEffect(() => {
     fetchWaveData()
   }, [fetchWaveData])
 
-  // Auto-refresh every 20 minutes
+  // Auto-refresh every 10 minutes (matching server cache TTL)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchWaveData()
-    }, 20 * 60 * 1000) // 20 minutes
+    }, 10 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [fetchWaveData])
@@ -256,6 +279,7 @@ export default function SurfMap() {
       {/* Refresh indicator */}
       <RefreshIndicator
         lastUpdate={lastUpdate}
+        nextRefresh={nextRefresh}
         error={error}
       />
     </div>

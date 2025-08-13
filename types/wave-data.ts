@@ -41,21 +41,10 @@ export interface OpenMeteoResponse {
   }
 }
 
-// Legacy NOAA interface kept for reference
-export interface NOAAResponse {
-  table: {
-    columnNames: string[]
-    columnTypes: string[]
-    columnUnits: string[]
-    rows: Array<Array<string | number>>
-  }
-}
-
 export interface WaveQualityInput {
   waveHeight: number // feet
   wavePeriod: number // seconds
   windSpeed: number // knots
-  // Short comment: direction is not used in scoring today; mark optional to match usage
   waveDirection?: number // degrees (optional)
 }
 
@@ -65,6 +54,8 @@ export interface WaveDataAPIResponse {
   stale?: boolean
   error?: string
   timestamp: string
+  cacheAge?: number // seconds since data was fetched
+  nextRefresh?: string // ISO timestamp of next scheduled refresh
 }
 
 export type WaveQualityLevel = 'poor' | 'fair' | 'good' | 'excellent'

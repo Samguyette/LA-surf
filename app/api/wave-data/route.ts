@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-// Short comment: temporarily disabling server-side cache to ensure always-fresh data
-// import NodeCache from 'node-cache'
+import NodeCache from 'node-cache'
 import { WaveDataPoint, OpenMeteoResponse } from '@/types/wave-data'
 import { calculateWaveQuality, getLocationFactor } from '@/utils/waveQuality'
 import { LA_COASTLINE_POINTS, isInMarinaExclusionZone } from '@/data/coastline'
 import { SECTION_CHARACTERISTICS } from '@/data/sections'
 import { COASTLINE_SECTIONS, CoastlineSection } from '@/data/coastlineSections'
 
-// Force this route to be dynamic and not cached
+// Force this route to be dynamic and not cached by Next.js
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Short comment: commenting out in-memory cache instance for now
-// const cache = new NodeCache({ stdTTL: 1200 })
+// 10-minute server-side cache to balance freshness with API efficiency
+const cache = new NodeCache({ stdTTL: 600 })
 
 const OPEN_METEO_BASE = 'https://marine-api.open-meteo.com/v1/marine'
 const OPEN_METEO_LATITUDES = [
@@ -42,18 +41,35 @@ const OPEN_METEO_LONGITUDES = [
 
 export async function GET(request: NextRequest) {
   try {
-    // Short comment: caching disabled; always fetch fresh data
-    // const cachedData = cache.get('wave-data') as WaveDataPoint[] | undefined
-    // if (cachedData) {
-    //   return NextResponse.json({
-    //     data: cachedData,
-    //     cached: true,
-    //     timestamp: new Date().toISOString()
-    //   })
-    // }
+    // Check cache first
+    const cacheKey = 'wave-data'
+    const cachedEntry = cache.get(cacheKey) as { data: WaveDataPoint[], timestamp: string, fetchTime: number } | undefined
+    
+    if (cachedEntry) {
+      const cacheAge = Date.now() - cachedEntry.fetchTime
+      const remainingTTL = Math.max(0, 600000 - cacheAge) // 10 minutes in ms
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`Returning cached data, TTL remaining: ${Math.round(remainingTTL / 1000)}s`)
+      }
+      
+      return NextResponse.json({
+        data: cachedEntry.data,
+        cached: true,
+        timestamp: cachedEntry.timestamp,
+        cacheAge: Math.round(cacheAge / 1000),
+        nextRefresh: new Date(cachedEntry.fetchTime + 600000).toISOString()
+      }, {
+        headers: {
+          'Cache-Control': `public, max-age=${Math.round(remainingTTL / 1000)}, s-maxage=${Math.round(remainingTTL / 1000)}`,
+          'X-Cache-Status': 'HIT',
+          'X-Cache-Remaining-TTL': remainingTTL.toString()
+        }
+      })
+    }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Fetching fresh wave data from Open-Meteo...')
+      console.log('Cache miss - fetching fresh wave data from Open-Meteo...')
     }
     
     // Fetch fresh data from Open-Meteo
@@ -68,19 +84,26 @@ export async function GET(request: NextRequest) {
       console.log(`Processed ${processedData.length} coastline points`)
     }
     
-    // Short comment: caching disabled; do not write to cache
-    // cache.set('wave-data', processedData)
+    // Cache the fresh data with metadata
+    const fetchTime = Date.now()
+    const timestamp = new Date(fetchTime).toISOString()
+    cache.set(cacheKey, {
+      data: processedData,
+      timestamp,
+      fetchTime
+    })
     
     return NextResponse.json({
       data: processedData,
       cached: false,
-      timestamp: new Date().toISOString()
+      timestamp,
+      cacheAge: 0,
+      nextRefresh: new Date(fetchTime + 600000).toISOString()
     }, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        'Surrogate-Control': 'no-store'
+        'Cache-Control': 'public, max-age=600, s-maxage=600',
+        'X-Cache-Status': 'MISS',
+        'X-Cache-Remaining-TTL': '600000'
       }
     })
     
@@ -88,17 +111,28 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching wave data:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     
-    // Short comment: caching disabled; do not return stale cached data
-    // const staleData = cache.get('wave-data') as WaveDataPoint[] | undefined
-    // if (staleData) {
-    //   return NextResponse.json({
-    //     data: staleData,
-    //     cached: true,
-    //     stale: true,
-    //     error: 'Using cached data due to API error',
-    //     timestamp: new Date().toISOString()
-    //   })
-    // }
+    // Try to return stale cached data if available
+    const staleEntry = cache.get('wave-data') as { data: WaveDataPoint[], timestamp: string, fetchTime: number } | undefined
+    if (staleEntry) {
+      const cacheAge = Date.now() - staleEntry.fetchTime
+      console.log('Returning stale cached data due to API error')
+      
+      return NextResponse.json({
+        data: staleEntry.data,
+        cached: true,
+        stale: true,
+        error: 'Using cached data due to API error',
+        timestamp: staleEntry.timestamp,
+        cacheAge: Math.round(cacheAge / 1000),
+        nextRefresh: new Date(Date.now() + 60000).toISOString() // Retry in 1 minute
+      }, {
+        headers: {
+          'Cache-Control': 'public, max-age=60, s-maxage=60',
+          'X-Cache-Status': 'STALE',
+          'X-Error': 'API-Error'
+        }
+      })
+    }
     
     return NextResponse.json(
       { error: 'Failed to fetch wave data' },
@@ -107,8 +141,7 @@ export async function GET(request: NextRequest) {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0',
-          'Surrogate-Control': 'no-store'
+          'Expires': '0'
         }
       }
     )

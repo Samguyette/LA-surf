@@ -1,20 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface RefreshIndicatorProps {
   lastUpdate: Date | null
   error: string | null
+  nextRefresh?: Date | null
+  onRefresh?: () => void
+  isRefreshing?: boolean
 }
 
 /**
- * Component that shows when data was last refreshed
+ * Component that shows when data was last refreshed with countdown timer
  */
 export default function RefreshIndicator({ 
   lastUpdate, 
-  error
+  error,
+  nextRefresh,
+  onRefresh,
+  isRefreshing = false
 }: RefreshIndicatorProps) {
   const [showTooltip, setShowTooltip] = useState(false)
+  const [showRefreshTooltip, setShowRefreshTooltip] = useState(false)
+  const [countdown, setCountdown] = useState<string>('')
 
   const formatLastUpdate = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
@@ -24,9 +32,40 @@ export default function RefreshIndicator({
     })
   }
 
+  const updateCountdown = useCallback(() => {
+    if (!nextRefresh) {
+      setCountdown('')
+      return
+    }
+
+    // Calculate time difference once and display as static
+    const now = Date.now()
+    const nextTime = nextRefresh.getTime()
+    const diff = nextTime - now
+
+    if (diff <= 0) {
+      setCountdown('Now')
+      return
+    }
+
+    const minutes = Math.floor(diff / 60000)
+    const seconds = Math.floor((diff % 60000) / 1000)
+    
+    if (minutes > 0) {
+      setCountdown(`${minutes}m ${seconds}s`)
+    } else {
+      setCountdown(`${seconds}s`)
+    }
+  }, [nextRefresh])
+
+  useEffect(() => {
+    // Only update countdown when nextRefresh changes, not every second
+    updateCountdown()
+  }, [updateCountdown])
+
   return (
     <div className="refresh-indicator">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         {lastUpdate ? (
           <div style={{ fontSize: '11px', opacity: 0.8 }}>
             Last update: {formatLastUpdate(lastUpdate)}
@@ -34,6 +73,19 @@ export default function RefreshIndicator({
         ) : (
           <div style={{ fontSize: '11px' }}>
             No data available
+          </div>
+        )}
+        
+        {/* Countdown timer */}
+        {countdown && (
+          <div style={{ 
+            fontSize: '10px', 
+            opacity: 0.7,
+            background: 'rgba(255, 255, 255, 0.1)',
+            padding: '2px 6px',
+            borderRadius: '10px'
+          }}>
+            Next: {countdown}
           </div>
         )}
         
