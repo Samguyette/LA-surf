@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Polyline, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { WaveDataPoint } from '@/types/wave-data'
@@ -31,7 +31,7 @@ interface CoastlineSegment {
 
 /**
  * Component that renders the LA County coastline with wave quality visualization
- * Uses OpenStreetMap Overpass API to get actual coastline geometry
+ * Uses OpenStreetMap Overpass API to get actual coastline geometry but stores it in a static file
  * 
  * Interactive behavior:
  * - On desktop: Click any part of the coastline to view wave conditions
@@ -44,10 +44,7 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
   const [coastlineGeometry, setCoastlineGeometry] = useState<[number, number][]>([])
   const map = useMap()
 
-    // Use hardcoded coastline geometry (static data from OpenStreetMap Overpass API)
   useEffect(() => {
-    // Complete coastline coordinates from Overpass API (processed and filtered)
-    // This eliminates the need for API fetches and makes the coastline load instantly
     setCoastlineGeometry(staticCoastlineGeometry)
     onLoadingChange?.(false)
   }, [])
@@ -94,7 +91,9 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
       naturalSegments.push(currentSegment)
     }
     
-    console.log('Created', naturalSegments.length, 'natural coastline segments')
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Created', naturalSegments.length, 'natural coastline segments')
+    }
     
     // Create visual segments from natural segments
     naturalSegments.forEach((segment, segmentIndex) => {
@@ -104,26 +103,12 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
       const maxPointsPerSegment = 8
       
       if (segment.length <= maxPointsPerSegment) {
-        // Small segment - use as is
         const segmentCenter = [
           segment.reduce((sum, p) => sum + p[0], 0) / segment.length,
           segment.reduce((sum, p) => sum + p[1], 0) / segment.length
         ]
         
-        let nearestWavePoint = waveData[0]
-        let minDistance = Infinity
-        
-        for (const wavePoint of waveData) {
-          const distance = Math.sqrt(
-            Math.pow(wavePoint.lat - segmentCenter[0], 2) + 
-            Math.pow(wavePoint.lng - segmentCenter[1], 2)
-          )
-          
-          if (distance < minDistance) {
-            minDistance = distance
-            nearestWavePoint = wavePoint
-          }
-        }
+        const nearestWavePoint = findNearestWavePoint(waveData, segmentCenter[0], segmentCenter[1])
         
         const color = getQualityColorRGB(nearestWavePoint.qualityScore)
         const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
@@ -154,20 +139,7 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
             subSegment.reduce((sum, p) => sum + p[1], 0) / subSegment.length
           ]
           
-          let nearestWavePoint = waveData[0]
-    let minDistance = Infinity
-    
-          for (const wavePoint of waveData) {
-      const distance = Math.sqrt(
-              Math.pow(wavePoint.lat - segmentCenter[0], 2) + 
-              Math.pow(wavePoint.lng - segmentCenter[1], 2)
-      )
-      
-      if (distance < minDistance) {
-        minDistance = distance
-              nearestWavePoint = wavePoint
-            }
-          }
+          const nearestWavePoint = findNearestWavePoint(waveData, segmentCenter[0], segmentCenter[1])
           
           const color = getQualityColorRGB(nearestWavePoint.qualityScore)
           const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
@@ -191,12 +163,10 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
     return segments
   }
 
-  const coastlineSegments = createCoastlineSegments()
+  const coastlineSegments = useMemo(() => createCoastlineSegments(), [coastlineGeometry, waveData])
 
-  // Handle click/tap events for mobile-friendly tooltips
   const handleSegmentClick = (event: L.LeafletMouseEvent, segment: CoastlineSegment) => {
     // Use the actual click position to find the nearest surf spot name
-    // This ensures accuracy when tapping different parts of the coastline
     const actualClickPoint = findNearestCoastlinePoint(event.latlng.lat, event.latlng.lng)
     
     setSelectedPoint({
@@ -226,7 +196,6 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
 
   return (
     <>
-      {/* Render coastline segments with wave quality colors */}
       {coastlineSegments.map((segment) => (
         <Polyline
           key={segment.id}
@@ -244,7 +213,6 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
               e.originalEvent.preventDefault() // Prevent default behavior
               handleSegmentClick(e, segment)
             },
-            // Add mousedown for better mobile compatibility
             mousedown: (e) => {
               e.originalEvent.stopPropagation()
               e.originalEvent.preventDefault()
@@ -253,7 +221,6 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
         />
       ))}
 
-      {/* Tooltip popup */}
       {selectedPoint && (
         <Popup
           position={selectedPoint.position}
@@ -272,6 +239,17 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
       )}
     </>
   )
+}
+
+// Short comment: shared helper centralizes nearest wave point search (same selection logic)
+function findNearestWavePoint(waveData: WaveDataPoint[], lat: number, lng: number) {
+  let nearest = waveData[0]
+  let best = Infinity
+  for (const p of waveData) {
+    const d2 = Math.pow(p.lat - lat, 2) + Math.pow(p.lng - lng, 2)
+    if (d2 < best) { best = d2; nearest = p }
+  }
+  return nearest
 }
 
 /**

@@ -55,7 +55,8 @@ export interface WaveQualityInput {
   waveHeight: number // feet
   wavePeriod: number // seconds
   windSpeed: number // knots
-  waveDirection: number // degrees (optional)
+  // Short comment: direction is not used in scoring today; mark optional to match usage
+  waveDirection?: number // degrees (optional)
 }
 
 export interface WaveDataAPIResponse {

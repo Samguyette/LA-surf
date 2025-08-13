@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { WaveDataPoint } from '@/types/wave-data'
 import { getQualityColor, getWaveQualityLevel } from '@/utils/waveQuality'
 import { COASTLINE_SECTIONS } from '@/data/coastlineSections'
@@ -24,20 +24,15 @@ interface SectionInfo {
  * their names, quality indicators, and average wave heights
  */
 export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProps) {
-  const [allSections, setAllSections] = useState<SectionInfo[]>([])
-
-  // Calculate section data from wave data
-  useEffect(() => {
+  // Short comment: memoize derived sections to avoid recalculation on render; mapCenter dependency kept to match original change pattern
+  const allSections = useMemo<SectionInfo[]>(() => {
     if (!waveData || waveData.length === 0) {
-      setAllSections([])
-      return
+      return []
     }
 
-    // Group wave data by section based on IDs
     const sectionData: { [key: string]: WaveDataPoint[] } = {}
     
     waveData.forEach(point => {
-      // Extract section name from point ID (format: "section-name-index")
       const sectionKey = point.id.split('-').slice(0, -1).join('-')
       if (!sectionData[sectionKey]) {
         sectionData[sectionKey] = []
@@ -45,7 +40,6 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
       sectionData[sectionKey].push(point)
     })
 
-    // Calculate section stats for all sections
     const sections: SectionInfo[] = Object.entries(sectionData).map(([key, points]) => {
       const matchingSection = COASTLINE_SECTIONS.find(s => 
         s.name.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') === key
@@ -65,14 +59,11 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
       }
     })
 
-    // Sort sections from north to south based on coastline order
-    const sortedSections = sections.sort((a, b) => {
+    return sections.sort((a, b) => {
       const aIndex = COASTLINE_SECTIONS.findIndex(s => s.name === a.name)
       const bIndex = COASTLINE_SECTIONS.findIndex(s => s.name === b.name)
       return aIndex - bIndex
     })
-
-    setAllSections(sortedSections)
   }, [waveData, mapCenter])
 
   if (allSections.length === 0) {

@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
 
 // Dynamically import the SurfMap component to avoid SSR issues with Leaflet
 const SurfMap = dynamic(() => import('@/components/SurfMap'), {
@@ -34,18 +33,8 @@ function LoadingFallback() {
 }
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return <LoadingFallback />
-  }
-
   return (
-    <main style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <main className="fullscreen">
       <SurfMap />
     </main>
   )

@@ -1,4 +1,5 @@
 import { CoastlinePoint } from '@/types/wave-data'
+import { distanceSquared } from '@/utils/geo'
 
 /**
  * Los Angeles County Surf Spot Reference Points
@@ -617,12 +618,11 @@ export function findNearestCoastlinePoint(lat: number, lng: number): CoastlinePo
   let minDistance = Infinity
   
   for (const point of LA_COASTLINE_POINTS) {
-    const distance = Math.sqrt(
-      Math.pow(point.lat - lat, 2) + Math.pow(point.lng - lng, 2)
-    )
+    // Short comment: use squared distance for faster comparisons (ordering identical)
+    const d2 = distanceSquared(point.lat, point.lng, lat, lng)
     
-    if (distance < minDistance) {
-      minDistance = distance
+    if (d2 < minDistance) {
+      minDistance = d2
       nearestPoint = point
     }
   }

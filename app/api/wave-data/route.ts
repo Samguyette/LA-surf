@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import NodeCache from 'node-cache'
+// Short comment: temporarily disabling server-side cache to ensure always-fresh data
+// import NodeCache from 'node-cache'
 import { WaveDataPoint, OpenMeteoResponse } from '@/types/wave-data'
 import { calculateWaveQuality, getLocationFactor } from '@/utils/waveQuality'
 import { LA_COASTLINE_POINTS, isInMarinaExclusionZone } from '@/data/coastline'
+import { SECTION_CHARACTERISTICS } from '@/data/sections'
 import { COASTLINE_SECTIONS, CoastlineSection } from '@/data/coastlineSections'
 
-// Cache for 20 minutes (1200 seconds)
-const cache = new NodeCache({ stdTTL: 1200 })
+// Short comment: commenting out in-memory cache instance for now
+// const cache = new NodeCache({ stdTTL: 1200 })
+
+const OPEN_METEO_BASE = 'https://marine-api.open-meteo.com/v1/marine'
+const OPEN_METEO_LATITUDES = [
+  33.70, 33.78, 33.86, 33.94, 34.02, 34.10, 34.18, 34.26, 34.34, 34.42
+] as const
+const OPEN_METEO_LONGITUDES = [
+  -119.30, -119.05, -118.80, -118.55, -118.30, -118.05, -117.80, -117.95, -118.15, -118.40
+] as const
 
 /**
  * Open-Meteo Marine Weather API Route
@@ -28,28 +38,34 @@ const cache = new NodeCache({ stdTTL: 1200 })
 
 export async function GET(request: NextRequest) {
   try {
-    // Check cache first
-    const cachedData = cache.get('wave-data') as WaveDataPoint[] | undefined
-    if (cachedData) {
-      return NextResponse.json({
-        data: cachedData,
-        cached: true,
-        timestamp: new Date().toISOString()
-      })
-    }
+    // Short comment: caching disabled; always fetch fresh data
+    // const cachedData = cache.get('wave-data') as WaveDataPoint[] | undefined
+    // if (cachedData) {
+    //   return NextResponse.json({
+    //     data: cachedData,
+    //     cached: true,
+    //     timestamp: new Date().toISOString()
+    //   })
+    // }
 
-    console.log('Fetching fresh wave data from Open-Meteo...')
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Fetching fresh wave data from Open-Meteo...')
+    }
     
     // Fetch fresh data from Open-Meteo
     const waveData = await fetchOpenMeteoWaveData()
-    console.log(`Received data from ${waveData.length} stations`)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Received data from ${waveData.length} stations`)
+    }
     
     // Process and interpolate data for LA coastline points
     const processedData = await processWaveDataForCoastline(waveData)
-    console.log(`Processed ${processedData.length} coastline points`)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Processed ${processedData.length} coastline points`)
+    }
     
-    // Cache the processed data
-    cache.set('wave-data', processedData)
+    // Short comment: caching disabled; do not write to cache
+    // cache.set('wave-data', processedData)
     
     return NextResponse.json({
       data: processedData,
@@ -61,17 +77,17 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching wave data:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     
-    // Return cached data if available, even if stale
-    const staleData = cache.get('wave-data') as WaveDataPoint[] | undefined
-    if (staleData) {
-      return NextResponse.json({
-        data: staleData,
-        cached: true,
-        stale: true,
-        error: 'Using cached data due to API error',
-        timestamp: new Date().toISOString()
-      })
-    }
+    // Short comment: caching disabled; do not return stale cached data
+    // const staleData = cache.get('wave-data') as WaveDataPoint[] | undefined
+    // if (staleData) {
+    //   return NextResponse.json({
+    //     data: staleData,
+    //     cached: true,
+    //     stale: true,
+    //     error: 'Using cached data due to API error',
+    //     timestamp: new Date().toISOString()
+    //   })
+    // }
     
     return NextResponse.json(
       { error: 'Failed to fetch wave data' },
@@ -97,15 +113,11 @@ async function tryOpenMeteoEndpoint(): Promise<Response> {
   // Define high-resolution LA County coastline coordinate grid
   // Optimized for 10 lats x 10 lons = 100 coordinates (max tested limit)
   // This provides much better resolution than the original 8x8 = 64 coordinates
-  const latitudes = [
-    33.70, 33.78, 33.86, 33.94, 34.02, 34.10, 34.18, 34.26, 34.34, 34.42
-  ]
-  const longitudes = [
-    -119.30, -119.05, -118.80, -118.55, -118.30, -118.05, -117.80, -117.95, -118.15, -118.40
-  ]
+  const latitudes = OPEN_METEO_LATITUDES
+  const longitudes = OPEN_METEO_LONGITUDES
   
-  // Build the API URL with multiple coordinates for better coverage
-  const baseUrl = 'https://marine-api.open-meteo.com/v1/marine'
+  // Build the API URL with multiple coordinates for single call
+  const baseUrl = OPEN_METEO_BASE
   const params = new URLSearchParams({
     latitude: latitudes.join(','),
     longitude: longitudes.join(','),
@@ -117,33 +129,32 @@ async function tryOpenMeteoEndpoint(): Promise<Response> {
   
   const endpoint = `${baseUrl}?${params.toString()}`
   
-  console.log(`Fetching wave data from Open-Meteo API...`)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Fetching wave data from Open-Meteo API...`)
+  }
   
   const response = await fetch(endpoint, {
     headers: {
       'User-Agent': 'LA-Surf-App/1.0',
     },
-    signal: AbortSignal.timeout(10000) // 10 second timeout
+    signal: AbortSignal.timeout(10000)
   })
   
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`)
   }
   
-  console.log(`Successfully fetched wave data from Open-Meteo`)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Successfully fetched wave data from Open-Meteo`)
+  }
   return response
 }
 
-// Legacy NOAA mock data generation removed - Open-Meteo provides reliable real data
-
 async function processWaveDataForCoastline(openMeteoData: OpenMeteoResponse[]): Promise<WaveDataPoint[]> {
-  // Process coastline data by dividing into sections for better spatial resolution
   const coastlineData: WaveDataPoint[] = []
   
-  // Use shared coastline sections configuration to eliminate duplication
-  // Process each section separately to get more varied data
   for (const section of COASTLINE_SECTIONS) {
-    const sectionData = await processSectionWaveData(openMeteoData, section)
+    const sectionData = processSectionWaveData(openMeteoData, section)
     coastlineData.push(...sectionData)
   }
   
@@ -152,16 +163,16 @@ async function processWaveDataForCoastline(openMeteoData: OpenMeteoResponse[]): 
 
 
 
-async function processSectionWaveData(
+function processSectionWaveData(
   openMeteoData: OpenMeteoResponse[], 
   section: CoastlineSection
-): Promise<WaveDataPoint[]> {
+): WaveDataPoint[] {
   if (!openMeteoData || openMeteoData.length === 0) {
     throw new Error('No wave data available from Open-Meteo')
   }
   
   // Filter Open-Meteo data to this section's geographic bounds
-  const sectionStations = openMeteoData.filter((station: any) => {
+  const sectionStations = openMeteoData.filter((station: OpenMeteoResponse) => {
     return (
       station.latitude >= section.bounds.south &&
       station.latitude <= section.bounds.north &&
@@ -181,13 +192,13 @@ async function processSectionWaveData(
     .map((point, index) => {
     // Find multiple nearby stations and weight them by distance
     const nearbyStations = stationsToUse
-      .map((station: any) => {
+      .map((station: OpenMeteoResponse) => {
         const distance = Math.sqrt(
           Math.pow(station.latitude - point.lat, 2) + Math.pow(station.longitude - point.lng, 2)
         )
         return { station, distance }
       })
-      .sort((a: any, b: any) => a.distance - b.distance)
+      .sort((a, b) => a.distance - b.distance)
       .slice(0, 3) // Use top 3 nearest stations
     
     if (nearbyStations.length === 0) {
@@ -211,16 +222,16 @@ async function processSectionWaveData(
       
       // If current data is null, try to use hourly data
       if (currentHeight === null || currentPeriod === null || currentDirection === null) {
-        // Find the first non-null hourly values
-        for (let i = 0; i < station.hourly.wave_height.length; i++) {
-          if (station.hourly.wave_height[i] !== null && 
-              station.hourly.wave_period[i] !== null && 
-              station.hourly.wave_direction[i] !== null) {
-            currentHeight = station.hourly.wave_height[i]
-            currentPeriod = station.hourly.wave_period[i]
-            currentDirection = station.hourly.wave_direction[i]
-            break
-          }
+        // Short comment: use helper to get first non-null triple for readability
+        const idx = findFirstNonNullTripletIndex(
+          station.hourly.wave_height,
+          station.hourly.wave_period,
+          station.hourly.wave_direction
+        )
+        if (idx !== -1) {
+          currentHeight = station.hourly.wave_height[idx]
+          currentPeriod = station.hourly.wave_period[idx]
+          currentDirection = station.hourly.wave_direction[idx]
         }
       }
       
@@ -231,13 +242,13 @@ async function processSectionWaveData(
         
         // Get swell data from hourly (use first non-null values)
         let swellHeight = null, swellPeriod = null
-        for (let i = 0; i < station.hourly.swell_wave_height.length; i++) {
-          if (station.hourly.swell_wave_height[i] !== null && 
-              station.hourly.swell_wave_period[i] !== null) {
-            swellHeight = station.hourly.swell_wave_height[i]
-            swellPeriod = station.hourly.swell_wave_period[i]
-            break
-          }
+        const swellIdx = findFirstNonNullPairIndex(
+          station.hourly.swell_wave_height,
+          station.hourly.swell_wave_period
+        )
+        if (swellIdx !== -1) {
+          swellHeight = station.hourly.swell_wave_height[swellIdx]
+          swellPeriod = station.hourly.swell_wave_period[swellIdx]
         }
         
         if (swellHeight !== null && swellPeriod !== null) {
@@ -317,112 +328,30 @@ async function processSectionWaveData(
   })
 }
 
+// Short comment: helpers to find the first index where multiple arrays have non-null values at same position
+function findFirstNonNullTripletIndex(a: (number|null)[], b: (number|null)[], c: (number|null)[]): number {
+  const len = Math.min(a.length, b.length, c.length)
+  for (let i = 0; i < len; i++) {
+    if (a[i] !== null && b[i] !== null && c[i] !== null) return i
+  }
+  return -1
+}
+
+function findFirstNonNullPairIndex(a: (number|null)[], b: (number|null)[]): number {
+  const len = Math.min(a.length, b.length)
+  for (let i = 0; i < len; i++) {
+    if (a[i] !== null && b[i] !== null) return i
+  }
+  return -1
+}
+
 function getSectionCharacteristics(sectionName: string) {
-  // Define realistic characteristics for each detailed coastal section
-  switch (sectionName) {
-    case 'Oxnard/Ventura County':
-      return {
-        heightMultiplier: 1.15, // Exposed to big NW swells
-        periodMultiplier: 1.1, // Long period swells
-        directionOffset: -8, // Strong NW exposure
-        windOffset: 3, // More wind exposure
-        tempOffset: -2 // Coolest water
-      }
-    case 'Zuma/Point Dume':
-      return {
-        heightMultiplier: 1.1, // Good swell exposure
-        periodMultiplier: 1.05, // Longer periods
-        directionOffset: -5, // NW exposure
-        windOffset: 1, // Some wind protection
-        tempOffset: -1 // Slightly cooler
-      }
-    case 'Malibu Point/Surfrider':
-      return {
-        heightMultiplier: 1.0, // Classic Malibu waves
-        periodMultiplier: 1.0, // Perfect period
-        directionOffset: 0, // Direct west exposure
-        windOffset: -2, // Point protection
-        tempOffset: 0 // Ideal temperature
-      }
-    case 'Malibu Creek/Big Rock':
-      return {
-        heightMultiplier: 0.95, // Slightly more protected
-        periodMultiplier: 0.98, // Good period
-        directionOffset: 2, // Slight SW exposure
-        windOffset: -1, // Some protection
-        tempOffset: 0 // Typical temperature
-      }
-    case 'Topanga/Sunset Point':
-      return {
-        heightMultiplier: 0.9, // More protected bay area
-        periodMultiplier: 0.95, // Shorter period
-        directionOffset: 5, // More SW exposure
-        windOffset: 0, // Average wind
-        tempOffset: 1 // Slightly warmer
-      }
-    case 'Will Rogers/Santa Monica':
-      return {
-        heightMultiplier: 0.85, // Bay protection
-        periodMultiplier: 0.92, // Shorter period
-        directionOffset: 8, // SW exposure
-        windOffset: 2, // More onshore wind
-        tempOffset: 1 // Bay warming
-      }
-    case 'Santa Monica Pier/Venice':
-      return {
-        heightMultiplier: 0.8, // Protected bay
-        periodMultiplier: 0.9, // Short period
-        directionOffset: 10, // SW exposure
-        windOffset: 3, // Onshore wind
-        tempOffset: 2 // Urban heat effect
-      }
-    case 'Venice/El Segundo':
-      return {
-        heightMultiplier: 0.85, // Beach break exposure
-        periodMultiplier: 0.88, // Shorter period
-        directionOffset: 12, // S/SW exposure
-        windOffset: 4, // Airport wind effect
-        tempOffset: 2 // Warm urban area
-      }
-    case 'Manhattan Beach/Hermosa':
-      return {
-        heightMultiplier: 0.9, // Good beach break
-        periodMultiplier: 0.9, // Moderate period
-        directionOffset: 15, // More south exposure
-        windOffset: 3, // Onshore winds
-        tempOffset: 2 // Urban heat
-      }
-    case 'Hermosa/Redondo Beach':
-      return {
-        heightMultiplier: 0.88, // Beach break
-        periodMultiplier: 0.88, // Short period
-        directionOffset: 18, // South exposure
-        windOffset: 4, // More wind
-        tempOffset: 3 // Warmer urban area
-      }
-    case 'Redondo/Palos Verdes':
-      return {
-        heightMultiplier: 0.92, // Transitioning to point
-        periodMultiplier: 0.9, // Moderate period
-        directionOffset: 20, // S/SSW exposure
-        windOffset: 2, // Some wind protection
-        tempOffset: 2 // Urban influence
-      }
-    case 'Palos Verdes Peninsula':
-      return {
-        heightMultiplier: 1.05, // Point break exposure
-        periodMultiplier: 1.0, // Good period
-        directionOffset: 25, // Strong south exposure
-        windOffset: 0, // Protected from NW winds
-        tempOffset: 1 // Slightly warmer
-      }
-    default:
-      return {
-        heightMultiplier: 1.0,
-        periodMultiplier: 1.0,
-        directionOffset: 0,
-        windOffset: 0,
-        tempOffset: 0
-      }
+  // Short comment: read characteristics from central map to keep API and UI consistent
+  return SECTION_CHARACTERISTICS[sectionName] ?? {
+    heightMultiplier: 1.0,
+    periodMultiplier: 1.0,
+    directionOffset: 0,
+    windOffset: 0,
+    tempOffset: 0
   }
 }

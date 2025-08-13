@@ -41,6 +41,7 @@ export default function RefreshIndicator({
         <div style={{ position: 'relative' }}>
           <button
             className="info-button"
+            aria-label="Show grading info"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
             onClick={() => setShowTooltip(!showTooltip)}
@@ -55,12 +56,8 @@ export default function RefreshIndicator({
               justifyContent: 'center',
               cursor: 'pointer',
               fontSize: '9px',
-              color: 'white',
-              opacity: 0.7,
-              transition: 'opacity 0.2s ease'
+              color: 'white'
             }}
-            onMouseOver={(e) => (e.target as HTMLButtonElement).style.opacity = '1'}
-            onMouseOut={(e) => (e.target as HTMLButtonElement).style.opacity = '0.7'}
           >
             i
           </button>

@@ -104,7 +104,7 @@ export default function SurfMap() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined)
-  const [mapRef, setMapRef] = useState<L.Map | null>(null)
+  const handleMapReady = useCallback((map: L.Map) => {}, [])
 
   /**
    * Fetch wave data from the API
@@ -113,12 +113,8 @@ export default function SurfMap() {
     try {
       setError(null)
       
-      const response = await fetch('/api/wave-data', {
-        cache: 'no-cache',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
-      })
+      // Short comment: request fresh data each time while caching is disabled
+      const response = await fetch('/api/wave-data', { cache: 'no-store' })
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
@@ -159,10 +155,6 @@ export default function SurfMap() {
     return () => clearInterval(interval)
   }, [fetchWaveData])
 
-
-
-  // Get center point for map
-  const bounds = getCoastlineBounds()
   const center: [number, number] = [
     33.99025038212213,-118.65394136580532
   ]
@@ -228,7 +220,8 @@ export default function SurfMap() {
         {/* Map tiles - Using MapTiler custom theme */}
         <TileLayer
           attribution='&copy; <a href="https://www.maptiler.com/copyright">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://api.maptiler.com/maps/062c0d04-1842-4a45-8181-c5bec3bf2214/256/{z}/{x}/{y}.png?key=3tFgnOQBQixe61aigsBT"
+          // Short comment: read the key from env for safety; falls back to existing behavior if unset
+          url={`https://api.maptiler.com/maps/062c0d04-1842-4a45-8181-c5bec3bf2214/256/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY ?? '3tFgnOQBQixe61aigsBT'}`}
           maxZoom={15}
           minZoom={9}
         />
@@ -237,7 +230,7 @@ export default function SurfMap() {
         <MapBoundsController bounds={LA_BOUNDS} />
         
         {/* Map center tracker */}
-        <MapCenterTracker onCenterChange={setMapCenter} onMapReady={setMapRef} />
+        <MapCenterTracker onCenterChange={setMapCenter} onMapReady={handleMapReady} />
         
         {/* Coastline with wave data */}
         {waveData.length > 0 && (

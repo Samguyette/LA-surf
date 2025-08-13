@@ -1,4 +1,5 @@
 import { WaveQualityInput, WaveQualityLevel, WaveQualityConfig } from '@/types/wave-data'
+import { SECTION_LOCATION_FACTOR } from '@/data/sections'
 
 /**
  * Wave Quality Scoring Algorithm for LA County Surf Conditions
@@ -171,43 +172,8 @@ function calculateWindSpeedScore(windSpeed: number, optimal: WaveQualityConfig['
  * This reflects the inherent quality and consistency of different surf spots
  */
 export function getLocationFactor(sectionName: string): number {
-  // Location factors: 0.7 = poor/crowded, 1.0 = average, 1.2 = premium
-  switch (sectionName) {
-    // Premium point breaks and consistent spots
-    case 'Malibu Point/Surfrider':
-      return 1.2  // World-class point break
-    case 'Palos Verdes Peninsula':
-      return 1.15 // Quality point breaks, less crowded
-    case 'Zuma/Point Dume':
-      return 1.1  // Good exposure, quality waves
-    
-    // Above average spots
-    case 'Oxnard/Ventura County':
-      return 1.05 // Good swell exposure
-    case 'Malibu Creek/Big Rock':
-      return 1.0  // Solid spots but can be inconsistent
-    
-    // Average spots
-    case 'Topanga/Sunset Point':
-      return 0.95 // Decent but can be inconsistent
-    case 'Hermosa/Redondo Beach':
-      return 0.9  // Beach breaks, moderate quality
-    case 'Manhattan Beach/Hermosa':
-      return 0.9  // Popular but crowded
-    case 'Redondo/Palos Verdes':
-      return 0.95 // Transitional area, variable quality
-    
-    // Below average / crowded spots
-    case 'Will Rogers/Santa Monica':
-      return 0.8  // Very crowded, variable quality
-    case 'Santa Monica Pier/Venice':
-      return 0.7  // Crowded tourist area, inconsistent
-    case 'Venice/El Segundo':
-      return 0.75 // Crowded, airport wind effects
-    
-    default:
-      return 1.0  // Average
-  }
+  // Short comment: centralized map prevents drift between API and utils
+  return SECTION_LOCATION_FACTOR[sectionName] ?? 1.0
 }
 
 /**
