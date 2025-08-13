@@ -103,6 +103,7 @@ export default function SurfMap() {
   const [isLoading, setIsLoading] = useState(true)
   const [isCoastlineLoading, setIsCoastlineLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [measurementTime, setMeasurementTime] = useState<Date | null>(null)
   const [nextRefresh, setNextRefresh] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -137,6 +138,10 @@ export default function SurfMap() {
       
       setWaveData(result.data)
       setLastUpdate(new Date(result.timestamp))
+      
+      if (result.measurementTime) {
+        setMeasurementTime(new Date(result.measurementTime))
+      }
       
       if (result.nextRefresh) {
         setNextRefresh(new Date(result.nextRefresh))
@@ -279,6 +284,7 @@ export default function SurfMap() {
       {/* Refresh indicator */}
       <RefreshIndicator
         lastUpdate={lastUpdate}
+        measurementTime={measurementTime}
         nextRefresh={nextRefresh}
         error={error}
       />

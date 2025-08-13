@@ -15,7 +15,8 @@ export interface WaveDataPoint {
   qualityScore: number // 0-100 scale
   tideHeight: number // feet
   tideTrend: 'rising' | 'falling' // trend direction
-  timestamp: string
+  timestamp: string // when this data point was processed by our API
+  measurementTime: string // when the raw data was actually measured by instruments
 }
 
 export interface CoastlinePoint {
@@ -65,7 +66,8 @@ export interface WaveDataAPIResponse {
   cached: boolean
   stale?: boolean
   error?: string
-  timestamp: string
+  timestamp: string // when our API processed the data
+  measurementTime?: string // when the raw data was actually measured (earliest measurement time from sources)
   cacheAge?: number // seconds since data was fetched
   nextRefresh?: string // ISO timestamp of next scheduled refresh
 }

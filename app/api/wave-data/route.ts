@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
   try {
     // Check cache first
     const cacheKey = 'wave-data'
-    const cachedEntry = cache.get(cacheKey) as { data: WaveDataPoint[], timestamp: string, fetchTime: number } | undefined
+    const cachedEntry = cache.get(cacheKey) as { data: WaveDataPoint[], timestamp: string, fetchTime: number, measurementTime?: string | null } | undefined
     
     if (cachedEntry) {
       const cacheAge = Date.now() - cachedEntry.fetchTime
@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
         data: cachedEntry.data,
         cached: true,
         timestamp: cachedEntry.timestamp,
+        measurementTime: cachedEntry.measurementTime,
         cacheAge: Math.round(cacheAge / 1000),
         nextRefresh: new Date(cachedEntry.fetchTime + 600000).toISOString()
       }, {
@@ -100,19 +101,29 @@ export async function GET(request: NextRequest) {
       console.log(`Processed ${processedData.length} coastline points`)
     }
     
+    // Find the earliest measurement time across all data points
+    const earliestMeasurementTime = processedData.reduce((earliest, point) => {
+      if (!earliest || new Date(point.measurementTime) < new Date(earliest)) {
+        return point.measurementTime
+      }
+      return earliest
+    }, null as string | null)
+    
     // Cache the fresh data with metadata
     const fetchTime = Date.now()
     const timestamp = new Date(fetchTime).toISOString()
     cache.set(cacheKey, {
       data: processedData,
       timestamp,
-      fetchTime
+      fetchTime,
+      measurementTime: earliestMeasurementTime
     })
     
     return NextResponse.json({
       data: processedData,
       cached: false,
       timestamp,
+      measurementTime: earliestMeasurementTime,
       cacheAge: 0,
       nextRefresh: new Date(fetchTime + 600000).toISOString()
     }, {
@@ -128,7 +139,7 @@ export async function GET(request: NextRequest) {
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     
     // Try to return stale cached data if available
-    const staleEntry = cache.get('wave-data') as { data: WaveDataPoint[], timestamp: string, fetchTime: number } | undefined
+    const staleEntry = cache.get('wave-data') as { data: WaveDataPoint[], timestamp: string, fetchTime: number, measurementTime?: string | null } | undefined
     if (staleEntry) {
       const cacheAge = Date.now() - staleEntry.fetchTime
       console.log('Returning stale cached data due to API error')
@@ -139,6 +150,7 @@ export async function GET(request: NextRequest) {
         stale: true,
         error: 'Using cached data due to API error',
         timestamp: staleEntry.timestamp,
+        measurementTime: staleEntry.measurementTime,
         cacheAge: Math.round(cacheAge / 1000),
         nextRefresh: new Date(Date.now() + 60000).toISOString() // Retry in 1 minute
       }, {
@@ -416,6 +428,7 @@ function processSectionWaveData(
     let weightedSwellHeight = 0, weightedSwellPeriod = 0, weightedWaterTemp = 0
     let avgHeight = 0, avgPeriod = 0, avgDirection = 0
     let avgSwellHeight = 0, avgSwellPeriod = 0, avgWaterTemp = 0
+    let earliestWaveMeasurementTime: string | null = null
     
     for (const { station, distance } of nearbyWaveStations) {
       const weight = 1 / (distance + 0.01) // Inverse distance weighting
@@ -425,6 +438,7 @@ function processSectionWaveData(
       let currentPeriod = station.current.wave_period ?? null
       let currentDirection = station.current.wave_direction ?? null
       let currentWaterTemp = station.current.sea_surface_temperature ?? null
+      let measurementTime = station.current.time // Start with current time
       
       // If current data is null, try to use hourly data
       if (currentHeight === null || currentPeriod === null || currentDirection === null) {
@@ -438,6 +452,8 @@ function processSectionWaveData(
           currentHeight = station.hourly.wave_height?.[idx] ?? null
           currentPeriod = station.hourly.wave_period?.[idx] ?? null
           currentDirection = station.hourly.wave_direction?.[idx] ?? null
+          // Use the timestamp from the hourly data if we're using hourly data
+          measurementTime = station.hourly.time?.[idx] || station.current.time
         }
       }
       
@@ -453,6 +469,11 @@ function processSectionWaveData(
         weightedHeight += currentHeight * weight
         weightedPeriod += currentPeriod * weight
         weightedDirection += currentDirection * weight
+        
+        // Track the earliest measurement time
+        if (earliestWaveMeasurementTime === null || new Date(measurementTime) < new Date(earliestWaveMeasurementTime)) {
+          earliestWaveMeasurementTime = measurementTime
+        }
         
         // Add water temperature to weighted average if available
         if (currentWaterTemp !== null) {
@@ -483,6 +504,7 @@ function processSectionWaveData(
     let windWeight = 0
     let weightedWindSpeed = 0, weightedWindDirection = 0, weightedAirTemp = 0
     let avgWindSpeed = 0, avgWindDirection = 0, avgAirTemp = 0
+    let earliestWindMeasurementTime: string | null = null
     
     for (const { station, distance } of nearbyWindStations) {
       const weight = 1 / (distance + 0.01) // Inverse distance weighting
@@ -491,6 +513,7 @@ function processSectionWaveData(
       let currentWindSpeed = station.current.wind_speed_10m ?? null
       let currentWindDirection = station.current.wind_direction_10m ?? null
       let currentAirTemp = station.current.temperature_2m ?? null
+      let windMeasurementTime = station.current.time // Start with current time
       
       // If current data is null, try to use hourly data
       if (currentWindSpeed === null || currentWindDirection === null || currentAirTemp === null) {
@@ -503,12 +526,19 @@ function processSectionWaveData(
           currentWindSpeed = currentWindSpeed ?? station.hourly.wind_speed_10m?.[idx] ?? null
           currentWindDirection = currentWindDirection ?? station.hourly.wind_direction_10m?.[idx] ?? null
           currentAirTemp = currentAirTemp ?? station.hourly.temperature_2m?.[idx] ?? null
+          // Use the timestamp from the hourly data if we're using hourly data
+          windMeasurementTime = station.hourly.time?.[idx] || station.current.time
         }
       }
       
       if (currentWindSpeed !== null && currentWindDirection !== null) {
         weightedWindSpeed += currentWindSpeed * weight
         weightedWindDirection += currentWindDirection * weight
+        
+        // Track the earliest wind measurement time
+        if (earliestWindMeasurementTime === null || new Date(windMeasurementTime) < new Date(earliestWindMeasurementTime)) {
+          earliestWindMeasurementTime = windMeasurementTime
+        }
         
         if (currentAirTemp !== null) {
           weightedAirTemp += currentAirTemp * weight
@@ -605,6 +635,18 @@ function processSectionWaveData(
       tideTrend = sectionTideData.trend
     }
     
+    // Determine the earliest measurement time from all sources
+    let overallEarliestTime = earliestWaveMeasurementTime
+    if (earliestWindMeasurementTime && (!overallEarliestTime || new Date(earliestWindMeasurementTime) < new Date(overallEarliestTime))) {
+      overallEarliestTime = earliestWindMeasurementTime
+    }
+    
+    // If we have tide data, check its timestamp too
+    if (sectionTideData && Array.from(tideData.values()).length > 0) {
+      // NOAA tide data timestamps are in the format we need, but we'd need to access the original data
+      // For now, we'll use the wave/wind timestamps as they're more comprehensive
+    }
+    
     return {
       id: `${section.name.toLowerCase().replace(/\s+/g, '-')}-${index}`,
       lat: point.lat,
@@ -618,7 +660,8 @@ function processSectionWaveData(
       tideHeight: Math.round(tideHeight * 10) / 10,
       tideTrend,
       qualityScore,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      measurementTime: overallEarliestTime || new Date().toISOString() // Fallback to current time if no measurement time available
     }
   })
 }

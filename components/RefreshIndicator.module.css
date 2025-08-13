@@ -1,0 +1,225 @@
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 240px;
+}
+
+.primaryInfo {
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: -0.01em;
+}
+
+.primaryInfoNoData {
+  font-size: 11px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: -0.01em;
+}
+
+.statusDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusDotGreen {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.3);
+}
+
+.statusDotYellow {
+  background: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.3);
+}
+
+.statusDotGray {
+  background: #6b7280;
+}
+
+.label {
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.value {
+  color: white;
+  font-weight: 600;
+}
+
+.secondaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.secondaryInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fetchInfo {
+  font-size: 9px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.countdown {
+  font-size: 9px;
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(96, 165, 250, 0.08);
+}
+
+.infoButtonContainer {
+  position: relative;
+}
+
+.infoButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #9ca3af;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.infoButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 8px;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 11px;
+  width: 100%;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.tooltipTitle {
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #f8fafc;
+}
+
+.tooltipDescription {
+  font-size: 10px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  opacity: 0.9;
+  color: #e2e8f0;
+}
+
+.tooltipGrades {
+  font-size: 10px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tooltipGrade {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gradeRange {
+  font-weight: 700;
+  min-width: 55px;
+}
+
+.gradeRangeExcellent {
+  color: #4ade80;
+}
+
+.gradeRangeGood {
+  color: #60a5fa;
+}
+
+.gradeRangeFair {
+  color: #fbbf24;
+}
+
+.gradeRangePoor {
+  color: #f87171;
+}
+
+.gradeDescription {
+  color: #f1f5f9;
+}
+
+.errorMessage {
+  font-size: 9px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(251, 191, 36, 0.08);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

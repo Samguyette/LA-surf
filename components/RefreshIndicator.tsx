@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import styles from './RefreshIndicator.module.css'
 
 interface RefreshIndicatorProps {
   lastUpdate: Date | null
+  measurementTime?: Date | null
   error: string | null
   nextRefresh?: Date | null
   onRefresh?: () => void
@@ -15,6 +17,7 @@ interface RefreshIndicatorProps {
  */
 export default function RefreshIndicator({ 
   lastUpdate, 
+  measurementTime,
   error,
   nextRefresh,
   onRefresh,
@@ -25,6 +28,14 @@ export default function RefreshIndicator({
   const [countdown, setCountdown] = useState<string>('')
 
   const formatLastUpdate = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    })
+  }
+
+  const formatMeasurementTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -65,85 +76,98 @@ export default function RefreshIndicator({
 
   return (
     <div className="refresh-indicator">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        {lastUpdate ? (
-          <div style={{ fontSize: '11px', opacity: 0.8 }}>
-            Last update: {formatLastUpdate(lastUpdate)}
+      <div 
+        className={styles.container}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        {/* Primary timestamp - measurement time */}
+        {measurementTime ? (
+          <div className={styles.primaryInfo}>
+            <span className={`${styles.statusDot} ${styles.statusDotGreen}`} />
+            <span className={styles.label}>Data measured:</span>
+            <span className={styles.value}>{formatMeasurementTime(measurementTime)}</span>
+          </div>
+        ) : lastUpdate ? (
+          <div className={styles.primaryInfo}>
+            <span className={`${styles.statusDot} ${styles.statusDotYellow}`} />
+            <span className={styles.label}>Last update:</span>
+            <span className={styles.value}>{formatLastUpdate(lastUpdate)}</span>
           </div>
         ) : (
-          <div style={{ fontSize: '11px' }}>
+          <div className={styles.primaryInfoNoData}>
+            <span className={`${styles.statusDot} ${styles.statusDotGray}`} />
             No data available
           </div>
         )}
         
-        {/* Countdown timer */}
-        {countdown && (
-          <div style={{ 
-            fontSize: '10px', 
-            opacity: 0.7,
-            background: 'rgba(255, 255, 255, 0.1)',
-            padding: '2px 6px',
-            borderRadius: '10px'
-          }}>
-            Next refresh: {countdown}
+        {/* Secondary info row */}
+        <div className={styles.secondaryRow}>
+          <div className={styles.secondaryInfo}>
+            {/* API fetch time as secondary info if we have measurement time */}
+            {measurementTime && lastUpdate && (
+              <div className={styles.fetchInfo}>
+                Fetched: {formatLastUpdate(lastUpdate)}
+              </div>
+            )}
+            
+            {/* Countdown timer */}
+            {countdown && (
+              <div className={styles.countdown}>
+                Next: {countdown}
+              </div>
+            )}
+          </div>
+          
+          {/* Info button */}
+          <div className={styles.infoButtonContainer}>
+            <button
+              className={styles.infoButton}
+              aria-label="Show grading info"
+              onClick={() => setShowTooltip(!showTooltip)}
+            >
+              i
+            </button>
+          </div>
+        </div>
+        
+        {/* Tooltip - positioned relative to entire container */}
+        {showTooltip && (
+          <div className={styles.tooltip}>
+            <div className={styles.tooltipTitle}>
+              Surf Quality Grading
+            </div>
+            <div className={styles.tooltipDescription}>
+              Scores are based on wave height, period, wind speed, and location quality:
+            </div>
+            <div className={styles.tooltipGrades}>
+              <div className={styles.tooltipGrade}>
+                <span className={`${styles.gradeRange} ${styles.gradeRangeExcellent}`}>75-100:</span> 
+                <span className={styles.gradeDescription}>Excellent conditions</span>
+              </div>
+              <div className={styles.tooltipGrade}>
+                <span className={`${styles.gradeRange} ${styles.gradeRangeGood}`}>55-74:</span> 
+                <span className={styles.gradeDescription}>Good surf</span>
+              </div>
+              <div className={styles.tooltipGrade}>
+                <span className={`${styles.gradeRange} ${styles.gradeRangeFair}`}>35-54:</span> 
+                <span className={styles.gradeDescription}>Fair conditions</span>
+              </div>
+              <div className={styles.tooltipGrade}>
+                <span className={`${styles.gradeRange} ${styles.gradeRangePoor}`}>0-34:</span> 
+                <span className={styles.gradeDescription}>Poor surf</span>
+              </div>
+            </div>
           </div>
         )}
         
-        {/* Info button */}
-        <div style={{ position: 'relative' }}>
-          <button
-            className="info-button"
-            aria-label="Show grading info"
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-            onClick={() => setShowTooltip(!showTooltip)}
-            style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '50%',
-              width: '16px',
-              height: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '9px',
-              color: 'white'
-            }}
-          >
-            i
-          </button>
-          
-          {/* Tooltip */}
-          {showTooltip && (
-            <div className="grading-info-tooltip">
-              <div style={{ fontWeight: '600', marginBottom: '6px', fontSize: '12px' }}>
-                Surf Quality Grading
-              </div>
-              <div style={{ fontSize: '10px', lineHeight: '1.4', marginBottom: '6px' }}>
-                Scores are based on wave height, period, wind speed, and location quality:
-              </div>
-              <div style={{ fontSize: '9px', lineHeight: '1.3' }}>
-                <div><strong>75-100:</strong> Excellent conditions</div>
-                <div><strong>55-74:</strong> Good surf</div>
-                <div><strong>35-54:</strong> Fair conditions</div>
-                <div><strong>0-34:</strong> Poor surf</div>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Error message */}
+        {error && (
+          <div className={styles.errorMessage}>
+            {error}
+          </div>
+        )}
       </div>
-      
-      {error && (
-        <div style={{ 
-          fontSize: '10px', 
-          color: '#ffeb3b',
-          marginTop: '4px',
-          opacity: 0.9
-        }}>
-          ⚠ {error}
-        </div>
-      )}
     </div>
   )
 }
