@@ -95,7 +95,7 @@ export const LA_COASTLINE_POINTS: CoastlinePoint[] = [
 ]
 
 // Coastline geometry from OpenStreetMap Overpass API
-export const staticCoastlineGeometry: [number, number][] = [
+const rawCoastlineGeometry: [number, number][] = [
   [34.0934478, -119.0754676],
   [34.0910767, -119.0706728],
   [34.0887037, -119.0664109],
@@ -573,6 +573,10 @@ export const staticCoastlineGeometry: [number, number][] = [
   [33.7449757, -118.4122907]
 ]
 
+// Export filtered coastline geometry that excludes marina entrance area
+export const staticCoastlineGeometry: [number, number][] = rawCoastlineGeometry
+  .filter(([lat, lng]) => !isInMarinaExclusionZone(lat, lng))
+
 /**
  * Get bounding box for LA County coastline
  */
@@ -583,6 +587,29 @@ export function getCoastlineBounds() {
     east: -117.7,
     west: -119.3   // Extended west to include Oxnard coastline
   }
+}
+
+
+/**
+ * Check if coordinates are within the marina exclusion zone
+ */
+export function isInMarinaExclusionZone(lat: number, lng: number): boolean {
+    /**
+   * Marina entrance exclusion zone
+   * Coordinates for the marina entrance where no wave data points should be placed
+   */
+  const MARINA_EXCLUSION_ZONE = {
+    lat: 33.962124971975285,
+    lng: -118.4597939401856,
+    radiusDegrees: 0.005 // Approximately 0.3 miles / 500 meters radius
+  }
+
+  const distance = Math.sqrt(
+    Math.pow(lat - MARINA_EXCLUSION_ZONE.lat, 2) + 
+    Math.pow(lng - MARINA_EXCLUSION_ZONE.lng, 2)
+  )
+  
+  return distance <= MARINA_EXCLUSION_ZONE.radiusDegrees
 }
 
 /**

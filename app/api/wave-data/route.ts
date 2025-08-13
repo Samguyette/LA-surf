@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import NodeCache from 'node-cache'
 import { WaveDataPoint, OpenMeteoResponse } from '@/types/wave-data'
 import { calculateWaveQuality, getLocationFactor } from '@/utils/waveQuality'
-import { LA_COASTLINE_POINTS } from '@/data/coastline'
+import { LA_COASTLINE_POINTS, isInMarinaExclusionZone } from '@/data/coastline'
 
 // Cache for 20 minutes (1200 seconds)
 const cache = new NodeCache({ stdTTL: 1200 })
@@ -243,7 +243,9 @@ async function processSectionWaveData(
   // Add some realistic regional variation based on section characteristics
   const sectionMultipliers = getSectionCharacteristics(section.name)
   
-  return section.points.map((point, index) => {
+  return section.points
+    .filter(point => !isInMarinaExclusionZone(point.lat, point.lng)) // Exclude marina entrance points
+    .map((point, index) => {
     // Find multiple nearby stations and weight them by distance
     const nearbyStations = stationsToUse
       .map((station: any) => {
