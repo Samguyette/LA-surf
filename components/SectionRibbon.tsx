@@ -120,6 +120,7 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
                 </div>
               </div>
             )
+          })}
         </div>
       </div>
     </div>
