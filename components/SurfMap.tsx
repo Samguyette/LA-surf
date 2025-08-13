@@ -8,6 +8,7 @@ import { getCoastlineBounds } from '@/data/coastline'
 import CoastlineLayer from '@/components/CoastlineLayer'
 import RefreshIndicator from '@/components/RefreshIndicator'
 import SectionRibbon from '@/components/SectionRibbon'
+import InteractiveHint from '@/components/InteractiveHint'
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -281,6 +282,11 @@ export default function SurfMap() {
         nextRefresh={nextRefresh}
         error={error}
       />
+      
+      {/* Interactive hint for new users */}
+      {waveData.length > 0 && !isLoading && !isCoastlineLoading && (
+        <InteractiveHint />
+      )}
     </div>
   )
 }
