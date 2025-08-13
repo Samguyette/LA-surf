@@ -1,0 +1,17 @@
+{
+  "name": "LA Surf Conditions",
+  "short_name": "LA Surf",
+  "description": "Real-time surf conditions for Los Angeles County coastline",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
