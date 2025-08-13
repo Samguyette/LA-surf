@@ -7,6 +7,10 @@ import { LA_COASTLINE_POINTS, isInMarinaExclusionZone } from '@/data/coastline'
 import { SECTION_CHARACTERISTICS } from '@/data/sections'
 import { COASTLINE_SECTIONS, CoastlineSection } from '@/data/coastlineSections'
 
+// Force this route to be dynamic and not cached
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // Short comment: commenting out in-memory cache instance for now
 // const cache = new NodeCache({ stdTTL: 1200 })
 
@@ -71,6 +75,13 @@ export async function GET(request: NextRequest) {
       data: processedData,
       cached: false,
       timestamp: new Date().toISOString()
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+      }
     })
     
   } catch (error) {
@@ -91,7 +102,15 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(
       { error: 'Failed to fetch wave data' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store'
+        }
+      }
     )
   }
 }
