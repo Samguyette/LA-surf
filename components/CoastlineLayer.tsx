@@ -335,8 +335,11 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
           <div className="metric-value">{point.windSpeed} kts</div>
         </div>
         <div className="metric-item">
-          <div className="metric-label">Water Temp</div>
-          <div className="metric-value">{point.waterTemp}°F</div>
+          <div className="metric-label">Temp</div>
+          <div className="metric-value">
+            <div>🌊&nbsp; {point.waterTemp} °F</div>
+            <div>☀️&nbsp; {point.airTemp} °F</div>
+          </div>
         </div>
       </div>
 

@@ -206,16 +206,17 @@ async function tryOpenMeteoEndpoint(): Promise<{ waveResponse: Response; windRes
     timezone: 'America/Los_Angeles'
   })
   
-  // Build the forecast API URL for wind data  
+  // Build the forecast API URL for wind and temperature data  
   const forecastBaseUrl = 'https://api.open-meteo.com/v1/forecast'
   const windParams = new URLSearchParams({
     latitude: latitudes.join(','),
     longitude: longitudes.join(','),
-    current: 'wind_speed_10m,wind_direction_10m',
-    hourly: 'wind_speed_10m,wind_direction_10m',
+    current: 'wind_speed_10m,wind_direction_10m,temperature_2m',
+    hourly: 'wind_speed_10m,wind_direction_10m,temperature_2m',
     forecast_days: '1',
     timezone: 'America/Los_Angeles',
-    wind_speed_unit: 'kn' // Get wind speed in knots directly
+    wind_speed_unit: 'kn', // Get wind speed in knots directly
+    temperature_unit: 'fahrenheit' // Get temperature in Fahrenheit
   })
   
   const waveEndpoint = `${marineBaseUrl}?${marineParams.toString()}`
@@ -465,8 +466,8 @@ function processSectionWaveData(
     
     // Average the nearby wind station data using inverse distance weighting  
     let windWeight = 0
-    let weightedWindSpeed = 0, weightedWindDirection = 0
-    let avgWindSpeed = 0, avgWindDirection = 0
+    let weightedWindSpeed = 0, weightedWindDirection = 0, weightedAirTemp = 0
+    let avgWindSpeed = 0, avgWindDirection = 0, avgAirTemp = 0
     
     for (const { station, distance } of nearbyWindStations) {
       const weight = 1 / (distance + 0.01) // Inverse distance weighting
@@ -474,22 +475,30 @@ function processSectionWaveData(
       // Use current data if available, otherwise use latest hourly data
       let currentWindSpeed = station.current.wind_speed_10m ?? null
       let currentWindDirection = station.current.wind_direction_10m ?? null
+      let currentAirTemp = station.current.temperature_2m ?? null
       
       // If current data is null, try to use hourly data
-      if (currentWindSpeed === null || currentWindDirection === null) {
-        const idx = findFirstNonNullPairIndex(
+      if (currentWindSpeed === null || currentWindDirection === null || currentAirTemp === null) {
+        const idx = findFirstNonNullTripletIndex(
           station.hourly.wind_speed_10m || [],
-          station.hourly.wind_direction_10m || []
+          station.hourly.wind_direction_10m || [],
+          station.hourly.temperature_2m || []
         )
         if (idx !== -1) {
-          currentWindSpeed = station.hourly.wind_speed_10m?.[idx] ?? null
-          currentWindDirection = station.hourly.wind_direction_10m?.[idx] ?? null
+          currentWindSpeed = currentWindSpeed ?? station.hourly.wind_speed_10m?.[idx] ?? null
+          currentWindDirection = currentWindDirection ?? station.hourly.wind_direction_10m?.[idx] ?? null
+          currentAirTemp = currentAirTemp ?? station.hourly.temperature_2m?.[idx] ?? null
         }
       }
       
       if (currentWindSpeed !== null && currentWindDirection !== null) {
         weightedWindSpeed += currentWindSpeed * weight
         weightedWindDirection += currentWindDirection * weight
+        
+        if (currentAirTemp !== null) {
+          weightedAirTemp += currentAirTemp * weight
+        }
+        
         windWeight += weight
       }
     }
@@ -520,10 +529,18 @@ function processSectionWaveData(
       console.warn(`No valid wind data for point ${point.lat}, ${point.lng}, using defaults`)
       avgWindSpeed = 8 + Math.random() * 6 // 8-14 knots (already in knots from API)
       avgWindDirection = 280 + Math.random() * 40 // Generally westerly for LA
+      // Default air temp based on LA seasonal averages (already in Fahrenheit from API)
+      avgAirTemp = 65 + Math.sin((new Date().getMonth() - 2) * Math.PI / 6) * 10 // 55-75°F seasonal range
     } else {
-      // Calculate weighted averages for wind data
+      // Calculate weighted averages for wind and air temperature data
       avgWindSpeed = weightedWindSpeed / windWeight
       avgWindDirection = weightedWindDirection / windWeight
+      avgAirTemp = weightedAirTemp / windWeight
+      
+      // If no air temp data but have wind data, use seasonal default
+      if (avgAirTemp === 0) {
+        avgAirTemp = 65 + Math.sin((new Date().getMonth() - 2) * Math.PI / 6) * 10
+      }
     }
     
     // Apply section-specific characteristics
@@ -534,11 +551,13 @@ function processSectionWaveData(
     // Apply section-specific wind characteristics (wind data is already in knots from API)
     const finalWindSpeed = Math.max(0, Math.min(35, avgWindSpeed + sectionMultipliers.windOffset))
     const finalWindDirection = avgWindDirection
+    const finalAirTemp = Math.max(40, Math.min(95, avgAirTemp + sectionMultipliers.tempOffset))
     
     // Convert units (Open-Meteo uses meters, we want feet for display)
     const waveHeightFeet = Math.max(0.5, Math.min(15, finalHeight * 3.28084))
     const wavePeriodSeconds = Math.max(5, Math.min(25, finalPeriod))
     const windSpeedKnots = Math.max(0, Math.min(30, finalWindSpeed))
+    const airTempF = Math.max(40, Math.min(95, finalAirTemp))
     
     // Get location factor for this section
     const locationFactor = getLocationFactor(section.name)
@@ -579,6 +598,7 @@ function processSectionWaveData(
       waveDirection: Math.round(finalDirection),
       windSpeed: Math.round(windSpeedKnots * 10) / 10,
       waterTemp: Math.round(waterTempF * 10) / 10,
+      airTemp: Math.round(airTempF * 10) / 10,
       tideHeight: Math.round(tideHeight * 10) / 10,
       tideTrend,
       qualityScore,

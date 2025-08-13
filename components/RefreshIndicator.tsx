@@ -85,7 +85,7 @@ export default function RefreshIndicator({
             padding: '2px 6px',
             borderRadius: '10px'
           }}>
-            Next: {countdown}
+            Next refresh: {countdown}
           </div>
         )}
         

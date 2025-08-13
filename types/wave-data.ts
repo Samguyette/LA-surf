@@ -11,6 +11,7 @@ export interface WaveDataPoint {
   waveDirection: number // degrees
   windSpeed: number // knots
   waterTemp: number // fahrenheit
+  airTemp: number // fahrenheit
   qualityScore: number // 0-100 scale
   tideHeight: number // feet
   tideTrend: 'rising' | 'falling' // trend direction
@@ -33,6 +34,7 @@ export interface OpenMeteoResponse {
     wave_period?: number | null
     wind_speed_10m?: number | null
     wind_direction_10m?: number | null
+    temperature_2m?: number | null
   }
   hourly: {
     time: string[]
@@ -44,6 +46,7 @@ export interface OpenMeteoResponse {
     swell_wave_period?: (number | null)[]
     wind_speed_10m?: (number | null)[]
     wind_direction_10m?: (number | null)[]
+    temperature_2m?: (number | null)[]
   }
 }
 
