@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import NodeCache from 'node-cache'
-import { WaveDataPoint, OpenMeteoResponse } from '@/types/wave-data'
+import { WaveDataPoint, OpenMeteoResponse, NOAATideResponse } from '@/types/wave-data'
 import { calculateWaveQuality, getLocationFactor } from '@/utils/waveQuality'
 import { LA_COASTLINE_POINTS, isInMarinaExclusionZone } from '@/data/coastline'
 import { SECTION_CHARACTERISTICS } from '@/data/sections'
@@ -20,6 +20,14 @@ const OPEN_METEO_LATITUDES = [
 const OPEN_METEO_LONGITUDES = [
   -119.30, -119.05, -118.80, -118.55, -118.30, -118.05, -117.80, -117.95, -118.15, -118.40
 ] as const
+
+// NOAA tide station IDs for LA County
+const NOAA_STATIONS = {
+  'Los Angeles': '9410660', // Los Angeles (Outer Harbor)
+  'Long Beach': '9411340', // Long Beach (Terminal Island)
+  'Santa Monica': '9410840', // Santa Monica
+  'Redondo Beach': '9410660', // Use LA station for now
+} as const
 
 /**
  * Open-Meteo Weather API Route
@@ -77,14 +85,17 @@ export async function GET(request: NextRequest) {
       console.log('Cache miss - fetching fresh wave data from Open-Meteo...')
     }
     
-    // Fetch fresh data from Open-Meteo
-    const { waveData, windData } = await fetchOpenMeteoWaveData()
+    // Fetch fresh data from Open-Meteo and NOAA
+    const [{ waveData, windData }, tideData] = await Promise.all([
+      fetchOpenMeteoWaveData(),
+      fetchNOAATideData()
+    ])
     if (process.env.NODE_ENV !== 'production') {
       console.log(`Received data from ${waveData.length} wave stations and ${windData.length} wind stations`)
     }
     
     // Process and interpolate data for LA coastline points
-    const processedData = await processWaveDataForCoastline(waveData, windData)
+    const processedData = await processWaveDataForCoastline(waveData, windData, tideData)
     if (process.env.NODE_ENV !== 'production') {
       console.log(`Processed ${processedData.length} coastline points`)
     }
@@ -245,11 +256,76 @@ async function tryOpenMeteoEndpoint(): Promise<{ waveResponse: Response; windRes
   return { waveResponse, windResponse }
 }
 
-async function processWaveDataForCoastline(waveData: OpenMeteoResponse[], windData: OpenMeteoResponse[]): Promise<WaveDataPoint[]> {
+async function fetchNOAATideData(): Promise<Map<string, { height: number; trend: 'rising' | 'falling' }>> {
+  const tideData = new Map<string, { height: number; trend: 'rising' | 'falling' }>()
+  
+  try {
+    // Fetch tide data for all LA stations
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0].replace(/-/g, '')
+    
+    const promises = Object.entries(NOAA_STATIONS).map(async ([locationName, stationId]) => {
+      try {
+        const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?` +
+          `date=today&station=${stationId}&product=water_level&datum=MLLW&` +
+          `time_zone=lst_ldt&units=english&format=json&application=LA-Surf-App`
+        
+        const response = await fetch(url, {
+          headers: { 'User-Agent': 'LA-Surf-App/1.0' },
+          signal: AbortSignal.timeout(8000)
+        })
+        
+        if (!response.ok) {
+          console.warn(`Failed to fetch tide data for ${locationName}: ${response.statusText}`)
+          return
+        }
+        
+        const data = await response.json() as NOAATideResponse
+        
+        if (!data.data || data.data.length < 2) {
+          console.warn(`Insufficient tide data for ${locationName}`)
+          return
+        }
+        
+        // Get the two most recent tide measurements to determine trend
+        const recent = data.data.slice(-2)
+        const currentHeight = parseFloat(recent[1].v)
+        const previousHeight = parseFloat(recent[0].v)
+        
+        const trend: 'rising' | 'falling' = currentHeight > previousHeight ? 'rising' : 'falling'
+        
+        tideData.set(locationName, {
+          height: currentHeight,
+          trend
+        })
+        
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`Tide data for ${locationName}: ${currentHeight}ft (${trend})`)
+        }
+        
+      } catch (error) {
+        console.warn(`Error fetching tide data for ${locationName}:`, error)
+      }
+    })
+    
+    await Promise.all(promises)
+    
+  } catch (error) {
+    console.error('Error fetching NOAA tide data:', error)
+  }
+  
+  return tideData
+}
+
+async function processWaveDataForCoastline(
+  waveData: OpenMeteoResponse[], 
+  windData: OpenMeteoResponse[], 
+  tideData: Map<string, { height: number; trend: 'rising' | 'falling' }>
+): Promise<WaveDataPoint[]> {
   const coastlineData: WaveDataPoint[] = []
   
   for (const section of COASTLINE_SECTIONS) {
-    const sectionData = processSectionWaveData(waveData, windData, section)
+    const sectionData = processSectionWaveData(waveData, windData, section, tideData)
     coastlineData.push(...sectionData)
   }
   
@@ -261,7 +337,8 @@ async function processWaveDataForCoastline(waveData: OpenMeteoResponse[], windDa
 function processSectionWaveData(
   waveData: OpenMeteoResponse[], 
   windData: OpenMeteoResponse[],
-  section: CoastlineSection
+  section: CoastlineSection,
+  tideData: Map<string, { height: number; trend: 'rising' | 'falling' }>
 ): WaveDataPoint[] {
   if (!waveData || waveData.length === 0) {
     throw new Error('No wave data available from Open-Meteo')
@@ -479,6 +556,20 @@ function processSectionWaveData(
     const baseWaterTemp = 64 + Math.sin((new Date().getMonth() - 2) * Math.PI / 6) * 8
     const waterTempF = baseWaterTemp + sectionMultipliers.tempOffset
     
+    // Get tide data for this section - use nearest tide station
+    let tideHeight = 2.5 // Default tide height in feet
+    let tideTrend: 'rising' | 'falling' = 'rising'
+    
+    // Find the best tide station for this section
+    const sectionTideData = tideData.get(section.name) || 
+                           tideData.get('Los Angeles') || 
+                           Array.from(tideData.values())[0]
+    
+    if (sectionTideData) {
+      tideHeight = sectionTideData.height
+      tideTrend = sectionTideData.trend
+    }
+    
     return {
       id: `${section.name.toLowerCase().replace(/\s+/g, '-')}-${index}`,
       lat: point.lat,
@@ -488,6 +579,8 @@ function processSectionWaveData(
       waveDirection: Math.round(finalDirection),
       windSpeed: Math.round(windSpeedKnots * 10) / 10,
       waterTemp: Math.round(waterTempF * 10) / 10,
+      tideHeight: Math.round(tideHeight * 10) / 10,
+      tideTrend,
       qualityScore,
       timestamp: new Date().toISOString()
     }

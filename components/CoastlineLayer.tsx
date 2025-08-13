@@ -325,8 +325,10 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
           <div className="metric-value">{point.waveHeight} ft</div>
         </div>
         <div className="metric-item">
-          <div className="metric-label">Wave Period</div>
-          <div className="metric-value">{point.wavePeriod} sec</div>
+          <div className="metric-label">Tide</div>
+          <div className="metric-value">
+            {point.tideHeight} ft {point.tideTrend === 'rising' ? '↑' : '↓'}
+          </div>
         </div>
         <div className="metric-item">
           <div className="metric-label">Wind Speed</div>
@@ -344,6 +346,11 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
           <span className="metric-value">{point.waveDirection}°</span>
         </div>
       )}
+
+      <div className="metric-row">
+        <span className="metric-label">Wave Period</span>{' '}
+        <span className="metric-value">{point.wavePeriod} sec</span>
+      </div>
 
       <div className="updated-time">Updated: {updateTime}</div>
       <div className="data-source">

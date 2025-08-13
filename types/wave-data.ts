@@ -12,6 +12,8 @@ export interface WaveDataPoint {
   windSpeed: number // knots
   waterTemp: number // fahrenheit
   qualityScore: number // 0-100 scale
+  tideHeight: number // feet
+  tideTrend: 'rising' | 'falling' // trend direction
   timestamp: string
 }
 
@@ -79,4 +81,13 @@ export interface WaveQualityConfig {
     maxWavePeriod: number // seconds
     maxWindSpeed: number // knots
   }
+}
+
+export interface NOAATideDataPoint {
+  t: string // timestamp
+  v: string // tide height value (as string)
+}
+
+export interface NOAATideResponse {
+  data: NOAATideDataPoint[]
 }
