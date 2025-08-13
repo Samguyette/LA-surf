@@ -42,17 +42,17 @@ import { SECTION_LOCATION_FACTOR } from '@/data/sections'
 
 const WAVE_QUALITY_CONFIG: WaveQualityConfig = {
   weights: {
-    waveHeight: 0.25,  // 30% - wave size importance (reduced from 35%)
-    wavePeriod: 0.20,  // 25% - wave quality/power (reduced from 30%)
-    windSpeed: 0.45,   // 35% - surface conditions (increased from 25%)
-    locationFactor: 0.10  // 10% - spot quality modifier
+    waveHeight: 0.30,
+    wavePeriod: 0.22,
+    windSpeed: 0.38,
+    locationFactor: 0.10
   },
   optimal: {
-    minWaveHeight: 3.0,    // feet - raised for more realistic scoring
-    maxWaveHeight: 6.0,    // feet - tighter optimal range
-    minWavePeriod: 10.0,   // seconds - higher minimum for quality
-    maxWavePeriod: 16.0,   // seconds
-    maxWindSpeed: 12.0     // knots - more wind-sensitive
+    minWaveHeight: 2.8,   // ft
+    maxWaveHeight: 7.0,   // ft
+    minWavePeriod: 11.0,  // s
+    maxWavePeriod: 17.0,  // s
+    maxWindSpeed: 11.0    // kts
   }
 }
 
@@ -92,28 +92,24 @@ export function calculateWaveQuality(input: WaveQualityInput, locationFactor: nu
  */
 function calculateWaveHeightScore(height: number, optimal: WaveQualityConfig['optimal']): number {
   if (height <= 0) return 0
-  
-  if (height < 1.5) {
-    // Tiny waves: very poor conditions (0-20%)
-    return Math.max(0, height * 0.133) // 0 at 0ft, 0.2 at 1.5ft
+
+  if (height < 1.8) {
+    return Math.max(0, height * 0.111)
   } else if (height < optimal.minWaveHeight) {
-    // Small waves: poor to fair conditions (20-50%)
-    const progress = (height - 1.5) / (optimal.minWaveHeight - 1.5)
-    return 0.2 + progress * 0.3  // 20% to 50%
+    const progress = (height - 1.8) / (optimal.minWaveHeight - 1.8)
+    return 0.2 + progress * 0.3
   } else if (height <= optimal.maxWaveHeight) {
-    // Optimal range: good to excellent conditions (50-100%)
     const progress = (height - optimal.minWaveHeight) / (optimal.maxWaveHeight - optimal.minWaveHeight)
-    return 0.5 + progress * 0.5  // 50% to 100%
-  } else if (height <= 8) {
-    // Large waves: good for experts (60-80%)
-    const progress = (height - optimal.maxWaveHeight) / (8 - optimal.maxWaveHeight)
-    return 0.8 - progress * 0.2  // 80% down to 60%
+    return 0.5 + progress * 0.5
+  } else if (height <= 10) {
+    const progress = (height - optimal.maxWaveHeight) / (10 - optimal.maxWaveHeight)
+    return 0.8 - progress * 0.2
   } else {
-    // Too large: dangerous/closed out (20-40%)
-    const excess = Math.min(height - 8, 4) // Cap excess at 4ft for calculation
-    return 0.4 - (excess / 4) * 0.2  // 40% down to 20%
+    const excess = Math.min(height - 10, 6)
+    return 0.4 - (excess / 6) * 0.2
   }
 }
+
 
 /**
  * Calculate wave period component score with realistic quality standards
@@ -121,72 +117,58 @@ function calculateWaveHeightScore(height: number, optimal: WaveQualityConfig['op
  */
 function calculateWavePeriodScore(period: number, optimal: WaveQualityConfig['optimal']): number {
   if (period <= 0) return 0
-  
-  if (period < 7) {
-    // Very short period: wind waves, very poor quality (0-20%)
-    return Math.max(0, period * 0.0286) // 0 at 0s, 0.2 at 7s
+
+  if (period < 8) {
+    return Math.max(0, period * 0.025)
   } else if (period < optimal.minWavePeriod) {
-    // Short period: poor to fair quality (20-50%)
-    const progress = (period - 7) / (optimal.minWavePeriod - 7)
-    return 0.2 + progress * 0.3  // 20% to 50%
-  } else if (period <= 13) {
-    // Medium period: good quality (50-80%)
-    const progress = (period - optimal.minWavePeriod) / (13 - optimal.minWavePeriod)
-    return 0.5 + progress * 0.3  // 50% to 80%
+    const progress = (period - 8) / (optimal.minWavePeriod - 8)
+    return 0.2 + progress * 0.3
+  } else if (period <= 14) {
+    const progress = (period - optimal.minWavePeriod) / (14 - optimal.minWavePeriod)
+    return 0.5 + progress * 0.3
   } else if (period <= optimal.maxWavePeriod) {
-    // Long period: excellent quality (80-100%)
-    const progress = (period - 13) / (optimal.maxWavePeriod - 13)
-    return 0.8 + progress * 0.2  // 80% to 100%
+    const progress = (period - 14) / (optimal.maxWavePeriod - 14)
+    return 0.8 + progress * 0.2
   } else {
-    // Very long period: may be too powerful/spread out (60-80%)
-    const excess = Math.min(period - optimal.maxWavePeriod, 8) // Cap excess
-    return 0.8 - (excess / 8) * 0.2  // 80% down to 60%
+    const excess = Math.min(period - optimal.maxWavePeriod, 8)
+    return 0.85 - (excess / 8) * 0.15
   }
 }
+
 
 /**
  * Calculate wind component score with wind speed and direction analysis
  * Enhanced to consider offshore vs onshore winds for surf quality
  */
 function calculateWindScore(
-  windSpeed: number, 
-  windDirection?: number, 
-  waveDirection?: number, 
+  windSpeed: number,
+  windDirection?: number,
+  waveDirection?: number,
   optimal?: WaveQualityConfig['optimal']
 ): number {
   if (windSpeed < 0) return 0
-  
-  // Calculate base wind speed score
+
   let windSpeedScore = 0
-  if (windSpeed <= 3) {
-    // Glass conditions: excellent but rare (90-100%)
-    windSpeedScore = 0.9 + (3 - windSpeed) * 0.033  // 90% at 3kts, 100% at 0kts
+  if (windSpeed <= 4) {
+    windSpeedScore = 1 - (windSpeed * 0.02)
   } else if (windSpeed <= 8) {
-    // Light wind: good conditions (60-90%)
-    const progress = (windSpeed - 3) / 5
-    windSpeedScore = 0.9 - progress * 0.3  // 90% down to 60%
-  } else if (windSpeed <= (optimal?.maxWindSpeed || 12)) {
-    // Moderate wind: fair conditions (30-60%)
-    const progress = (windSpeed - 8) / ((optimal?.maxWindSpeed || 12) - 8)
-    windSpeedScore = 0.6 - progress * 0.3  // 60% down to 30%
+    windSpeedScore = 0.92 - ((windSpeed - 4) * 0.0675)
+  } else if (windSpeed <= (optimal?.maxWindSpeed || 11)) {
+    windSpeedScore = 0.65 - ((windSpeed - 8) * 0.10)
   } else if (windSpeed <= 18) {
-    // Strong wind: poor conditions (10-30%)
-    const progress = (windSpeed - (optimal?.maxWindSpeed || 12)) / (18 - (optimal?.maxWindSpeed || 12))
-    windSpeedScore = 0.3 - progress * 0.2  // 30% down to 10%
+    windSpeedScore = 0.35 - ((windSpeed - (optimal?.maxWindSpeed || 11)) * 0.032857)
   } else {
-    // Very strong wind: blown out (0-10%)
-    const excess = Math.min(windSpeed - 18, 12) // Cap excess at 12kts
-    windSpeedScore = 0.1 - (excess / 12) * 0.1  // 10% down to 0%
+    const excess = Math.min(windSpeed - 18, 12)
+    windSpeedScore = 0.12 - (excess * 0.008333)
   }
-  
-  // Apply wind direction modifier if both wind and wave directions are available
+
   if (windDirection !== undefined && waveDirection !== undefined) {
     const windDirectionModifier = calculateWindDirectionModifier(windDirection, waveDirection)
     return windSpeedScore * windDirectionModifier
   }
-  
   return windSpeedScore
 }
+
 
 /**
  * Calculate wind direction modifier for surf quality
@@ -211,17 +193,17 @@ function calculateWindDirectionModifier(windDirection: number, waveDirection: nu
   
   if (angleDiff <= 45) {
     // Wind blowing in same direction as waves (onshore) - bad for surf
-    return 0.3  // Significantly reduce quality
+    return 0.25  // Significantly reduce quality
   } else if (angleDiff >= 135) {
     // Wind blowing opposite to waves (offshore) - good for surf
-    return 1.4  // Significantly improve quality (but cap overall score)
+    return 1.5
   } else if (angleDiff >= 90) {
     // Wind blowing perpendicular (cross-shore) - neutral to slightly good
-    return 1.1  // Slight improvement
+    return 1.08
   } else {
     // Partially onshore winds - somewhat bad
-    const factor = (angleDiff - 45) / 45  // 0 to 1 as angle increases
-    return 0.3 + factor * 0.8  // Gradually improve from 0.3 to 1.1
+    const factor = (angleDiff - 45) / 45
+    return 0.25 + factor * 0.83
   }
 }
 
