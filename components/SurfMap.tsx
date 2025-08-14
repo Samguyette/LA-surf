@@ -266,7 +266,7 @@ export default function SurfMap() {
       
       {/* Loading indicator */}
       {(isLoading || isCoastlineLoading) && (
-        <div className="loading-spinner" />
+        <div className={styles.loadingSpinner} />
       )}
       
       {/* Refresh indicator */}

@@ -75,7 +75,7 @@ export default function RefreshIndicator({
   }, [updateCountdown])
 
   return (
-    <div className="refresh-indicator">
+    <div className={styles.refreshIndicator}>
       <div 
         className={styles.container}
         onMouseEnter={() => setShowTooltip(true)}

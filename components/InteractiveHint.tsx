@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import styles from './InteractiveHint.module.css'
 
 interface InteractiveHintProps {
   onDismiss?: () => void
@@ -50,14 +51,14 @@ export default function InteractiveHint({ onDismiss }: InteractiveHintProps) {
   }
 
   return (
-    <div className="interactive-hint">
-      <div className="interactive-hint-content">
-        <span className="interactive-hint-icon">👆</span>
-        <span className="interactive-hint-text">
+    <div className={styles.interactiveHint}>
+      <div className={styles.interactiveHintContent}>
+        <span className={styles.interactiveHintIcon}>👆</span>
+        <span className={styles.interactiveHintText}>
           Click the coastline to view surf conditions
         </span>
         <button
-          className="interactive-hint-dismiss"
+          className={styles.interactiveHintDismiss}
           onClick={handleDismiss}
           aria-label="Dismiss hint"
         >

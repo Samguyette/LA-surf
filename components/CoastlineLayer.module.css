@@ -1,0 +1,173 @@
+/* Custom styles for wave quality indicators */
+.waveQualityTooltip {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.waveQualityTooltip h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.waveQualityTooltip p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.waveQualityScore {
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: white;
+}
+
+.waveQualityScore.excellent {
+  background-color: #22c55e;
+}
+
+.waveQualityScore.good {
+  background-color: #84cc16;
+}
+
+.waveQualityScore.fair {
+  background-color: #eab308;
+}
+
+.waveQualityScore.poor {
+  background-color: #ef4444;
+}
+
+/* Enhanced popup layout */
+.waveTooltipHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.waveTooltipTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.waveQualityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.waveQualityBadge .badgeScore {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.waveQualityBadge.excellent { background: #16a34a; }
+.waveQualityBadge.good { background: #84cc16; }
+.waveQualityBadge.fair { background: #eab308; color: #111; }
+.waveQualityBadge.poor { background: #ef4444; }
+
+.waveQualityMeter {
+  position: relative;
+  height: 6px;
+  background: #eef2f7;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 6px 0 10px 0;
+}
+
+.waveQualityMeterFill {
+  height: 100%;
+  background: #22c55e;
+  border-radius: inherit;
+  transition: width 250ms ease;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 11px;
+}
+
+.metricItem {
+  background: #f9fafb;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.metricLabel {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metricValue {
+  color: #111827;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.metricRow {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #374151;
+}
+
+.updatedTime {
+  margin-top: 10px;
+  font-size: 10px;
+  color: #888;
+  border-top: 1px solid #eee;
+  padding-top: 6px;
+}
+
+.dataSource {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.dataSourceLink {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.dataSourceLink:hover {
+  text-decoration: underline;
+  color: #2563eb;
+}
+
+/* Mobile touch feedback for coastline */
+@media (max-width: 768px) {
+  /* Make popup content more touch-friendly */
+  .waveQualityTooltip {
+    padding: 16px;
+    min-width: 240px;
+  }
+  
+  .waveQualityTooltip h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+}

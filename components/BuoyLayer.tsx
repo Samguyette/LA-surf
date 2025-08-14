@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useMap } from 'react-leaflet'
 import L from 'leaflet'
+import styles from './BuoyLayer.module.css'
 
 // Open-Meteo API data collection points used for wave forecasting
 const OPEN_METEO_LOCATIONS = [
@@ -135,7 +136,7 @@ export default function BuoyLayer({ showLabels = false }: BuoyLayerProps) {
     const labels: L.Marker[] = OPEN_METEO_LOCATIONS.map((buoy) => {
       const label = L.marker([buoy.lat, buoy.lng], {
         icon: L.divIcon({
-          className: 'buoy-label',
+          className: styles.buoyLabel,
           html: `<div style="
             background: rgba(0, 170, 102, 0.9);
             color: white;

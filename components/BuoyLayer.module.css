@@ -1,0 +1,13 @@
+/* Buoy layer styles */
+.buoyLabel {
+  pointer-events: none;
+}
+
+.buoyLabel div {
+  transition: all 0.2s ease;
+}
+
+.buoyLabel:hover div {
+  transform: scale(1.1);
+  background: rgba(0, 102, 204, 1) !important;
+}

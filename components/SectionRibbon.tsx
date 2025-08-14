@@ -136,12 +136,12 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
         </div>
       </div>
       
-      <div className="attribution">
+      <div className={styles.attribution}>
         <a 
           href="https://www.samguyette.com" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="attributionLink"
+          className={styles.attributionLink}
         >
           Made by Sam Guyette
         </a>

@@ -7,6 +7,7 @@ import { WaveDataPoint } from '@/types/wave-data'
 import { getQualityColorRGB, getWaveQualityLevel } from '@/utils/waveQuality'
 import { findNearestCoastlinePoint } from '@/data/coastline'
 import { staticCoastlineGeometry } from '@/data/coastline'
+import styles from './CoastlineLayer.module.css'
 
 interface CoastlineLayerProps {
   waveData: WaveDataPoint[]
@@ -304,39 +305,39 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
   })
 
   return (
-    <div className="wave-quality-tooltip">
-      <div className="wave-tooltip-header">
-        <h3 className="wave-tooltip-title">{coastlinePointName}</h3>
-        <span className={`wave-quality-badge ${qualityLevel}`}>
-          {qualityLevel.toUpperCase()} <span className="badge-score">{point.qualityScore}</span>
+    <div className={styles.waveQualityTooltip}>
+      <div className={styles.waveTooltipHeader}>
+        <h3 className={styles.waveTooltipTitle}>{coastlinePointName}</h3>
+        <span className={`${styles.waveQualityBadge} ${styles[qualityLevel]}`}>
+          {qualityLevel.toUpperCase()} <span className={styles.badgeScore}>{point.qualityScore}</span>
         </span>
       </div>
 
-      <div className="wave-quality-meter" aria-label="Quality score">
+      <div className={styles.waveQualityMeter} aria-label="Quality score">
         <div
-          className="wave-quality-meter-fill"
+          className={styles.waveQualityMeterFill}
           style={{ width: `${point.qualityScore}%`, background: qualityColor }}
         />
       </div>
 
-      <div className="metric-grid">
-        <div className="metric-item">
-          <div className="metric-label">Wave Height</div>
-          <div className="metric-value">{point.waveHeight} ft</div>
+      <div className={styles.metricGrid}>
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Wave Height</div>
+          <div className={styles.metricValue}>{point.waveHeight} ft</div>
         </div>
-        <div className="metric-item">
-          <div className="metric-label">Tide</div>
-          <div className="metric-value">
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Tide</div>
+          <div className={styles.metricValue}>
             {point.tideHeight} ft {point.tideTrend === 'rising' ? '↑' : '↓'}
           </div>
         </div>
-        <div className="metric-item">
-          <div className="metric-label">Wind Speed</div>
-          <div className="metric-value">{point.windSpeed} kts</div>
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Wind Speed</div>
+          <div className={styles.metricValue}>{point.windSpeed} kts</div>
         </div>
-        <div className="metric-item">
-          <div className="metric-label">Temp</div>
-          <div className="metric-value">
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Temp</div>
+          <div className={styles.metricValue}>
             <div>🌊&nbsp; {point.waterTemp} °F</div>
             <div>☀️&nbsp; {point.airTemp} °F</div>
           </div>
@@ -344,25 +345,25 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
       </div>
 
       {point.waveDirection && (
-        <div className="metric-row">
-          <span className="metric-label">Wave Direction</span>{' '}
-          <span className="metric-value">{point.waveDirection}°</span>
+        <div className={styles.metricRow}>
+          <span className={styles.metricLabel}>Wave Direction</span>{' '}
+          <span className={styles.metricValue}>{point.waveDirection}°</span>
         </div>
       )}
 
-      <div className="metric-row">
-        <span className="metric-label">Wave Period</span>{' '}
-        <span className="metric-value">{point.wavePeriod} sec</span>
+      <div className={styles.metricRow}>
+        <span className={styles.metricLabel}>Wave Period</span>{' '}
+        <span className={styles.metricValue}>{point.wavePeriod} sec</span>
       </div>
 
-      <div className="updated-time">Updated: {updateTime}</div>
-      <div className="data-source">
+      <div className={styles.updatedTime}>Updated: {updateTime}</div>
+      <div className={styles.dataSource}>
         Data sourced from{' '}
         <a 
           href="https://open-meteo.com/en/docs/marine-weather-api" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="data-source-link"
+          className={styles.dataSourceLink}
         >
           Open Meteo
         </a>
