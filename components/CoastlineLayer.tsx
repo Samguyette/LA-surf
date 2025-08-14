@@ -5,7 +5,7 @@ import { Polyline, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { WaveDataPoint } from '@/types/wave-data'
 import { getQualityColorRGB, getWaveQualityLevel } from '@/utils/waveQuality'
-import { findNearestCoastlinePoint, groupedCoastlineGeometry } from '@/data/coastline'
+import { findNearestCoastlinePoint, staticCoastlineGeometry } from '@/data/coastline'
 import styles from './CoastlineLayer.module.css'
 
 interface CoastlineLayerProps {
@@ -52,82 +52,102 @@ export default function CoastlineLayer({ waveData, onLoadingChange, selectedSect
     onLoadingChange?.(false)
   }, [])
 
-  // Create segments based on grouped coastline sections
+  // Create segments based on continuous coastline with gap detection
   const createCoastlineSegments = (): CoastlineSegment[] => {
     if (waveData.length === 0) {
       return []
     }
 
     const segments: CoastlineSegment[] = []
+    const coordinates = staticCoastlineGeometry
     
-    // Iterate through each section in the grouped geometry
-    Object.entries(groupedCoastlineGeometry).forEach(([sectionName, coordinates]) => {
-      if (coordinates.length < 2) return
+    if (coordinates.length < 2) return []
+    
+    // Track current section and build segments, breaking on large gaps or section changes
+    let currentSection = determineCoastlineSection(coordinates[0][0], coordinates[0][1])
+    let currentSegment: [number, number][] = [coordinates[0]]
+    
+    for (let i = 1; i < coordinates.length; i++) {
+      const [lat, lng] = coordinates[i]
+      const prevPoint = coordinates[i - 1]
+      const pointSection = determineCoastlineSection(lat, lng)
       
-      // Split section coordinates into natural segments based on gaps
-      const naturalSegments: [number, number][][] = []
-      let currentSegment: [number, number][] = []
+      // Calculate distance between consecutive points
+      const distance = Math.sqrt(
+        Math.pow(lat - prevPoint[0], 2) + 
+        Math.pow(lng - prevPoint[1], 2)
+      )
       
-      for (let i = 0; i < coordinates.length; i++) {
-        const currentPoint = coordinates[i]
-        
-        if (currentSegment.length === 0) {
-          currentSegment.push(currentPoint)
-        } else {
-          const prevPoint = currentSegment[currentSegment.length - 1]
-          const distance = Math.sqrt(
-            Math.pow(currentPoint[0] - prevPoint[0], 2) + 
-            Math.pow(currentPoint[1] - prevPoint[1], 2)
-          )
+      // Break segment if there's a large gap (>0.01 degrees ~1km) OR section changes
+      const hasLargeGap = distance > 0.01
+      const sectionChanged = pointSection !== currentSection
+      
+      if (hasLargeGap || sectionChanged) {
+        // Finish current segment if it has enough points
+        if (currentSegment.length >= 2) {
+          const segmentCenter = [
+            currentSegment.reduce((sum, p) => sum + p[0], 0) / currentSegment.length,
+            currentSegment.reduce((sum, p) => sum + p[1], 0) / currentSegment.length
+          ]
           
-          // If there's a large gap (>0.01 degrees ~1km), start a new segment
-          if (distance > 0.01) {
-            if (currentSegment.length > 1) {
-              naturalSegments.push([...currentSegment])
-            }
-            currentSegment = [currentPoint]
-          } else {
-            currentSegment.push(currentPoint)
-          }
+          const nearestWavePoint = findNearestWavePoint(waveData, segmentCenter[0], segmentCenter[1])
+          const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
+          
+          const color = getQualityColorRGB(nearestWavePoint.qualityScore)
+          const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
+          
+          segments.push({
+            id: `section-${currentSection}-${segments.length}`,
+            positions: [...currentSegment],
+            color,
+            weight,
+            opacity: 0.8,
+            wavePoint: nearestWavePoint,
+            coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location',
+            sectionName: currentSection
+          })
         }
+        
+        // Start new segment - only include previous point if gap is small and we're just changing sections
+        currentSection = pointSection
+        if (!hasLargeGap && sectionChanged) {
+          currentSegment = [coordinates[i - 1], [lat, lng]] // Include last point for continuity
+        } else {
+          currentSegment = [[lat, lng]] // Start fresh for large gaps
+        }
+      } else {
+        // Same section and no large gap, add to current segment
+        currentSegment.push([lat, lng])
       }
+    }
+    
+    // Add the final segment
+    if (currentSegment.length >= 2) {
+      const segmentCenter = [
+        currentSegment.reduce((sum, p) => sum + p[0], 0) / currentSegment.length,
+        currentSegment.reduce((sum, p) => sum + p[1], 0) / currentSegment.length
+      ]
       
-      // Add the last segment
-      if (currentSegment.length > 1) {
-        naturalSegments.push(currentSegment)
-      }
+      const nearestWavePoint = findNearestWavePoint(waveData, segmentCenter[0], segmentCenter[1])
+      const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
       
-      // Create visual segments from natural segments within this section
-      naturalSegments.forEach((segment, segmentIndex) => {
-        if (segment.length < 2) return
-        
-        const segmentCenter = [
-          segment.reduce((sum, p) => sum + p[0], 0) / segment.length,
-          segment.reduce((sum, p) => sum + p[1], 0) / segment.length
-        ]
-        
-        const nearestWavePoint = findNearestWavePoint(waveData, segmentCenter[0], segmentCenter[1])
-        const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
-        
-        // Use wave quality coloring instead of section colors
-        const color = getQualityColorRGB(nearestWavePoint.qualityScore)
-        const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
-        
-        segments.push({
-          id: `${sectionName}-segment-${segmentIndex}`,
-          positions: segment,
-          color,
-          weight,
-          opacity: 0.8,
-          wavePoint: nearestWavePoint,
-          coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location',
-          sectionName: sectionName
-        })
+      const color = getQualityColorRGB(nearestWavePoint.qualityScore)
+      const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
+      
+      segments.push({
+        id: `section-${currentSection}-${segments.length}`,
+        positions: [...currentSegment],
+        color,
+        weight,
+        opacity: 0.8,
+        wavePoint: nearestWavePoint,
+        coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location',
+        sectionName: currentSection
       })
-    })
+    }
     
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Created', segments.length, 'coastline segments across', Object.keys(groupedCoastlineGeometry).length, 'sections')
+      console.log('Created', segments.length, 'coastline segments with gap detection and section breaks')
     }
     
     return segments
@@ -257,6 +277,90 @@ function findNearestWavePoint(waveData: WaveDataPoint[], lat: number, lng: numbe
     if (d2 < best) { best = d2; nearest = p }
   }
   return nearest
+}
+
+/**
+ * Determine which coastline section a coordinate belongs to based on geographic bounds
+ */
+function determineCoastlineSection(lat: number, lng: number): string {
+  const sections = [
+    {
+      name: 'Oxnard/Ventura County',
+      bounds: { north: 34.1950, south: 34.0800, west: -119.2785, east: -118.9000 }
+    },
+    {
+      name: 'Zuma/Point Dume',
+      bounds: { north: 34.0900, south: 34.0700, west: -118.9000, east: -118.7000 }
+    },
+    {
+      name: 'Malibu Point/Surfrider',
+      bounds: { north: 34.0750, south: 34.0400, west: -118.7200, east: -118.6700 }
+    },
+    {
+      name: 'Malibu Creek/Big Rock',
+      bounds: { north: 34.0500, south: 34.0300, west: -118.6700, east: -118.5700 }
+    },
+    {
+      name: 'Topanga/Sunset Point',
+      bounds: { north: 34.0400, south: 34.0250, west: -118.5700, east: -118.5000 }
+    },
+    {
+      name: 'Will Rogers/Santa Monica',
+      bounds: { north: 34.0350, south: 34.0000, west: -118.5300, east: -118.4900 }
+    },
+    {
+      name: 'Santa Monica Pier/Venice',
+      bounds: { north: 34.0100, south: 33.9700, west: -118.4950, east: -118.4500 }
+    },
+    {
+      name: 'Venice/El Segundo',
+      bounds: { north: 33.9700, south: 33.9200, west: -118.4500, east: -118.4200 }
+    },
+    {
+      name: 'Manhattan Beach/Hermosa',
+      bounds: { north: 33.9000, south: 33.8500, west: -118.4200, east: -118.3900 }
+    },
+    {
+      name: 'Hermosa/Redondo Beach',
+      bounds: { north: 33.8600, south: 33.8300, west: -118.4000, east: -118.3800 }
+    },
+    {
+      name: 'Redondo/Palos Verdes',
+      bounds: { north: 33.8400, south: 33.7700, west: -118.3900, east: -118.3400 }
+    },
+    {
+      name: 'Palos Verdes Peninsula',
+      bounds: { north: 33.8500, south: 33.7400, west: -118.3900, east: -118.3100 }
+    }
+  ]
+
+  // Check each section to see if the coordinate falls within its bounds
+  for (const section of sections) {
+    const { bounds } = section
+    if (lat >= bounds.south && lat <= bounds.north && 
+        lng >= bounds.west && lng <= bounds.east) {
+      return section.name
+    }
+  }
+  
+  // If no section matches, find the closest section based on distance to center
+  let closestSection = sections[0]
+  let minDistance = Infinity
+  
+  for (const section of sections) {
+    const centerLat = (section.bounds.north + section.bounds.south) / 2
+    const centerLng = (section.bounds.east + section.bounds.west) / 2
+    const distance = Math.sqrt(
+      Math.pow(lat - centerLat, 2) + Math.pow(lng - centerLng, 2)
+    )
+    
+    if (distance < minDistance) {
+      minDistance = distance
+      closestSection = section
+    }
+  }
+  
+  return closestSection.name
 }
 
 /**

@@ -13,7 +13,6 @@ export const metadata: Metadata = {
     apple: '/favicon.svg',
   },
   manifest: '/site.webmanifest',
-  themeColor: '#0ea5e9',
   openGraph: {
     title: 'LA Surf Conditions',
     description: 'Real-time surf conditions for Los Angeles County coastline. Get live NOAA wave data, interactive maps, and smart ratings.',
@@ -41,6 +40,7 @@ export const metadata: Metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: '#0ea5e9',
 }
 
 export default function RootLayout({

@@ -313,10 +313,6 @@ async function fetchNOAATideData(): Promise<Map<string, { height: number; trend:
           trend
         })
         
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`Tide data for ${locationName}: ${currentHeight}ft (${trend})`)
-        }
-        
       } catch (error) {
         console.warn(`Error fetching tide data for ${locationName}:`, error)
       }
