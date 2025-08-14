@@ -5,13 +5,13 @@ import { Polyline, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { WaveDataPoint } from '@/types/wave-data'
 import { getQualityColorRGB, getWaveQualityLevel } from '@/utils/waveQuality'
-import { findNearestCoastlinePoint } from '@/data/coastline'
-import { staticCoastlineGeometry } from '@/data/coastline'
+import { findNearestCoastlinePoint, groupedCoastlineGeometry } from '@/data/coastline'
 import styles from './CoastlineLayer.module.css'
 
 interface CoastlineLayerProps {
   waveData: WaveDataPoint[]
   onLoadingChange?: (isLoading: boolean) => void
+  selectedSection?: string | null
 }
 
 interface TooltipData {
@@ -28,143 +28,112 @@ interface CoastlineSegment {
   opacity: number
   wavePoint: WaveDataPoint
   coastlinePointName: string
+  sectionName: string
 }
+
+
 
 /**
  * Component that renders the LA County coastline with wave quality visualization
- * Uses OpenStreetMap Overpass API to get actual coastline geometry but stores it in a static file
+ * Shows color-coded wave quality data with optional section highlighting
  * 
  * Interactive behavior:
  * - On desktop: Click any part of the coastline to view wave conditions
  * - On mobile: Tap any part of the coastline to view wave conditions
  * - Tap elsewhere on the map or the close button to dismiss the popup
- * - Each coastline segment shows color-coded wave quality data
+ * - Coastline shows wave quality gradient colors (red/yellow/green)
+ * - Selected sections highlight in blue when clicked from ribbon
  */
-export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineLayerProps) {
+export default function CoastlineLayer({ waveData, onLoadingChange, selectedSection }: CoastlineLayerProps) {
   const [selectedPoint, setSelectedPoint] = useState<TooltipData | null>(null)
-  const [coastlineGeometry, setCoastlineGeometry] = useState<[number, number][]>([])
   const map = useMap()
 
   useEffect(() => {
-    setCoastlineGeometry(staticCoastlineGeometry)
     onLoadingChange?.(false)
   }, [])
 
-  // Create segments that respect natural coastline geometry
+  // Create segments based on grouped coastline sections
   const createCoastlineSegments = (): CoastlineSegment[] => {
-    if (coastlineGeometry.length < 2 || waveData.length === 0) {
+    if (waveData.length === 0) {
       return []
     }
 
     const segments: CoastlineSegment[] = []
     
-    // Split coastline into natural segments based on gaps between points
-    const naturalSegments: [number, number][][] = []
-    let currentSegment: [number, number][] = []
-    
-    for (let i = 0; i < coastlineGeometry.length; i++) {
-      const currentPoint = coastlineGeometry[i]
+    // Iterate through each section in the grouped geometry
+    Object.entries(groupedCoastlineGeometry).forEach(([sectionName, coordinates]) => {
+      if (coordinates.length < 2) return
       
-      if (currentSegment.length === 0) {
-        currentSegment.push(currentPoint)
-      } else {
-        const prevPoint = currentSegment[currentSegment.length - 1]
-        const distance = Math.sqrt(
-          Math.pow(currentPoint[0] - prevPoint[0], 2) + 
-          Math.pow(currentPoint[1] - prevPoint[1], 2)
-        )
+      // Split section coordinates into natural segments based on gaps
+      const naturalSegments: [number, number][][] = []
+      let currentSegment: [number, number][] = []
+      
+      for (let i = 0; i < coordinates.length; i++) {
+        const currentPoint = coordinates[i]
         
-        // If there's a large gap (>0.01 degrees ~1km), start a new segment
-        // This prevents connecting across bays
-        if (distance > 0.01) {
-          if (currentSegment.length > 1) {
-            naturalSegments.push([...currentSegment])
-          }
-          currentSegment = [currentPoint]
-        } else {
+        if (currentSegment.length === 0) {
           currentSegment.push(currentPoint)
+        } else {
+          const prevPoint = currentSegment[currentSegment.length - 1]
+          const distance = Math.sqrt(
+            Math.pow(currentPoint[0] - prevPoint[0], 2) + 
+            Math.pow(currentPoint[1] - prevPoint[1], 2)
+          )
+          
+          // If there's a large gap (>0.01 degrees ~1km), start a new segment
+          if (distance > 0.01) {
+            if (currentSegment.length > 1) {
+              naturalSegments.push([...currentSegment])
+            }
+            currentSegment = [currentPoint]
+          } else {
+            currentSegment.push(currentPoint)
+          }
         }
       }
-    }
-    
-    // Add the last segment
-    if (currentSegment.length > 1) {
-      naturalSegments.push(currentSegment)
-    }
-    
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Created', naturalSegments.length, 'natural coastline segments')
-    }
-    
-    // Create visual segments from natural segments
-    naturalSegments.forEach((segment, segmentIndex) => {
-      if (segment.length < 2) return
       
-      // For longer segments, subdivide them to get better color variation
-      const maxPointsPerSegment = 8
+      // Add the last segment
+      if (currentSegment.length > 1) {
+        naturalSegments.push(currentSegment)
+      }
       
-      if (segment.length <= maxPointsPerSegment) {
+      // Create visual segments from natural segments within this section
+      naturalSegments.forEach((segment, segmentIndex) => {
+        if (segment.length < 2) return
+        
         const segmentCenter = [
           segment.reduce((sum, p) => sum + p[0], 0) / segment.length,
           segment.reduce((sum, p) => sum + p[1], 0) / segment.length
         ]
         
         const nearestWavePoint = findNearestWavePoint(waveData, segmentCenter[0], segmentCenter[1])
+        const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
         
+        // Use wave quality coloring instead of section colors
         const color = getQualityColorRGB(nearestWavePoint.qualityScore)
         const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
         
-        // Find nearest coastline point name
-        const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
-        
         segments.push({
-          id: `natural-segment-${segmentIndex}`,
+          id: `${sectionName}-segment-${segmentIndex}`,
           positions: segment,
           color,
           weight,
           opacity: 0.8,
           wavePoint: nearestWavePoint,
-          coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location'
+          coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location',
+          sectionName: sectionName
         })
-      } else {
-        // Large segment - subdivide it
-        const chunkSize = Math.ceil(segment.length / Math.ceil(segment.length / maxPointsPerSegment))
-        
-        for (let i = 0; i < segment.length - 1; i += chunkSize) {
-          const subSegment = segment.slice(i, i + chunkSize + 1) // +1 for overlap
-          
-          if (subSegment.length < 2) continue
-          
-          const segmentCenter = [
-            subSegment.reduce((sum, p) => sum + p[0], 0) / subSegment.length,
-            subSegment.reduce((sum, p) => sum + p[1], 0) / subSegment.length
-          ]
-          
-          const nearestWavePoint = findNearestWavePoint(waveData, segmentCenter[0], segmentCenter[1])
-          
-          const color = getQualityColorRGB(nearestWavePoint.qualityScore)
-          const weight = Math.max(5, Math.min(8, (nearestWavePoint.qualityScore / 100) * 3 + 5))
-          
-          // Find nearest coastline point name
-          const nearestCoastlinePoint = findNearestCoastlinePoint(segmentCenter[0], segmentCenter[1])
-          
-          segments.push({
-            id: `natural-segment-${segmentIndex}-${i}`,
-            positions: subSegment,
-            color,
-            weight,
-            opacity: 0.8,
-            wavePoint: nearestWavePoint,
-            coastlinePointName: nearestCoastlinePoint.name || 'Unknown Location'
-          })
-        }
-      }
+      })
     })
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Created', segments.length, 'coastline segments across', Object.keys(groupedCoastlineGeometry).length, 'sections')
+    }
     
     return segments
   }
 
-  const coastlineSegments = useMemo(() => createCoastlineSegments(), [coastlineGeometry, waveData])
+  const coastlineSegments = useMemo(() => createCoastlineSegments(), [waveData, selectedSection])
 
   const handleSegmentClick = (event: L.LeafletMouseEvent, segment: CoastlineSegment) => {
     // Use the actual click position to find the nearest surf spot name
@@ -230,30 +199,35 @@ export default function CoastlineLayer({ waveData, onLoadingChange }: CoastlineL
 
   return (
     <>
-      {coastlineSegments.map((segment) => (
-        <Polyline
-          key={segment.id}
-          positions={segment.positions}
-          pathOptions={{
-            color: segment.color,
-            weight: Math.max(segment.weight, 8),
-            opacity: segment.opacity,
-            lineCap: 'round',
-            lineJoin: 'round',
-          }}
-          eventHandlers={{
-            click: (e) => {
-              e.originalEvent.stopPropagation() // Prevent map click event
-              e.originalEvent.preventDefault() // Prevent default behavior
-              handleSegmentClick(e, segment)
-            },
-            mousedown: (e) => {
-              e.originalEvent.stopPropagation()
-              e.originalEvent.preventDefault()
-            },
-          }}
-        />
-      ))}
+      {coastlineSegments.map((segment) => {
+        // Fix case sensitivity issue
+        const isSelected = selectedSection?.toLowerCase() === segment.sectionName.toLowerCase()
+        
+        return (
+          <Polyline
+            key={segment.id}
+            positions={segment.positions}
+            pathOptions={{
+              color: isSelected ? '#3B82F6' : segment.color,
+              weight: isSelected ? Math.max(segment.weight, 8) + 2 : Math.max(segment.weight, 8),
+              opacity: isSelected ? 0.8 : segment.opacity,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }}
+            eventHandlers={{
+              click: (e) => {
+                e.originalEvent.stopPropagation()
+                e.originalEvent.preventDefault()
+                handleSegmentClick(e, segment)
+              },
+              mousedown: (e) => {
+                e.originalEvent.stopPropagation()
+                e.originalEvent.preventDefault()
+              },
+            }}
+          />
+        )
+      })}
 
       {selectedPoint && (
         <Popup

@@ -97,6 +97,31 @@ function MapCenterTracker({ onCenterChange, onMapReady }: MapCenterTrackerProps)
   return null
 }
 
+interface MapClickHandlerProps {
+  onMapClick: () => void
+}
+
+/**
+ * Component to handle map clicks for resetting selection
+ */
+function MapClickHandler({ onMapClick }: MapClickHandlerProps) {
+  const map = useMap()
+  
+  useEffect(() => {
+    const handleClick = () => {
+      onMapClick()
+    }
+    
+    map.on('click', handleClick)
+    
+    return () => {
+      map.off('click', handleClick)
+    }
+  }, [map, onMapClick])
+  
+  return null
+}
+
 /**
  * Main surf map component displaying LA County coastline with wave conditions
  */
@@ -111,6 +136,7 @@ export default function SurfMap() {
   const [retryCount, setRetryCount] = useState(0)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined)
   const [showBuoyInfo, setShowBuoyInfo] = useState(false)
+  const [selectedSection, setSelectedSection] = useState<string | null>(null)
   const handleMapReady = useCallback((map: L.Map) => {}, [])
 
   /**
@@ -223,6 +249,8 @@ export default function SurfMap() {
         <SectionRibbon 
           waveData={waveData} 
           mapCenter={mapCenter}
+          selectedSection={selectedSection}
+          onSectionSelect={setSelectedSection}
         />
       )}
       
@@ -252,13 +280,19 @@ export default function SurfMap() {
         {/* Map center tracker */}
         <MapCenterTracker onCenterChange={setMapCenter} onMapReady={handleMapReady} />
         
+        {/* Map click handler to reset selection */}
+        <MapClickHandler onMapClick={() => setSelectedSection(null)} />
+        
         {/* Coastline with wave data */}
         {waveData.length > 0 && (
           <CoastlineLayer 
             waveData={waveData} 
             onLoadingChange={setIsCoastlineLoading}
+            selectedSection={selectedSection}
           />
         )}
+        
+
         
         {/* Buoy locations layer */}
         <BuoyLayer showLabels={false} />

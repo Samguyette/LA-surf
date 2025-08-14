@@ -9,6 +9,8 @@ import styles from './SectionRibbon.module.css'
 interface SectionRibbonProps {
   waveData: WaveDataPoint[]
   mapCenter?: { lat: number; lng: number }
+  selectedSection: string | null
+  onSectionSelect: (sectionName: string | null) => void
 }
 
 interface SectionInfo {
@@ -23,7 +25,7 @@ interface SectionInfo {
  * Component that displays a ribbon at the top showing all sections with
  * their names, quality indicators, and average wave heights
  */
-export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProps) {
+export default function SectionRibbon({ waveData, mapCenter, selectedSection, onSectionSelect }: SectionRibbonProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -97,11 +99,19 @@ export default function SectionRibbon({ waveData, mapCenter }: SectionRibbonProp
             {allSections.map((section, index) => {
               const qualityLevel = getWaveQualityLevel(section.avgQualityScore)
               const qualityColor = getQualityColor(section.avgQualityScore)
+              const isSelected = selectedSection === section.name
+              
+              const handleSectionClick = () => {
+                // Toggle selection: if already selected, deselect; otherwise select this section
+                onSectionSelect(isSelected ? null : section.name)
+              }
               
               return (
                 <div 
                   key={section.name} 
-                  className={styles.sectionItem}
+                  className={`${styles.sectionItem} ${isSelected ? styles.selected : ''}`}
+                  onClick={handleSectionClick}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div 
                     className={styles.qualityDot} 
