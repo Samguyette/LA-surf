@@ -341,9 +341,18 @@ export default function SurfMap() {
           </div>
           <div className={styles.panelDescription}>
             Open-Meteo API data collection points used for wave forecasting in the LA area. These three strategic locations provide wave, wind, and temperature data for surf forecasting. Click on any point for detailed information.
+            <br /><br />
+            <em>Zoom out to see all buoy locations on the map</em>
           </div>
           <div className={styles.panelFooter}>
-            Total: 3 Open-Meteo API points • Click for details
+            Total: 3 Open-Meteo API points • <a 
+              href="https://open-meteo.com/en/docs/marine-weather-api" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={styles.dataSourceLink}
+            >
+              Learn more
+            </a>
           </div>
         </div>
       )}
