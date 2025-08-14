@@ -123,7 +123,7 @@ export default function RefreshIndicator({
           <div className={styles.infoButtonContainer}>
             <button
               className={styles.infoButton}
-              aria-label="Show grading info"
+              aria-label="Show map usage guide and surf quality info"
               onClick={() => setShowTooltip(!showTooltip)}
             >
               i
@@ -135,27 +135,47 @@ export default function RefreshIndicator({
         {showTooltip && (
           <div className={styles.tooltip}>
             <div className={styles.tooltipTitle}>
-              Surf Quality Grading
+              How to Use This Map
             </div>
-            <div className={styles.tooltipDescription}>
-              Scores are based on wave height, period, wind speed, and location quality:
+            
+            {/* Interactive Features Section */}
+            <div className={styles.tooltipSection}>
+              <div className={styles.tooltipSectionTitle}>
+                Interactive Features
+              </div>
+              <div className={styles.tooltipDescription}>
+                <strong>Coastline:</strong> Click anywhere along the colored coastline to view detailed wave conditions, including wave height, period, wind speed, and quality score for that specific location.
+              </div>
+              <div className={styles.tooltipDescription}>
+                <strong>Section Ribbon:</strong> Click any section in the top ribbon to highlight and focus on that coastal area. Each section shows average wave height and quality score.
+              </div>
             </div>
-            <div className={styles.tooltipGrades}>
-              <div className={styles.tooltipGrade}>
-                <span className={`${styles.gradeRange} ${styles.gradeRangeExcellent}`}>75-100:</span> 
-                <span className={styles.gradeDescription}>Excellent conditions</span>
+
+            {/* Surf Quality Grading Section */}
+            <div className={styles.tooltipSection}>
+              <div className={styles.tooltipSectionTitle}>
+                Surf Quality Grading
               </div>
-              <div className={styles.tooltipGrade}>
-                <span className={`${styles.gradeRange} ${styles.gradeRangeGood}`}>55-74:</span> 
-                <span className={styles.gradeDescription}>Good surf</span>
+              <div className={styles.tooltipDescription}>
+                Scores are based on wave height, period, wind speed, and location quality:
               </div>
-              <div className={styles.tooltipGrade}>
-                <span className={`${styles.gradeRange} ${styles.gradeRangeFair}`}>35-54:</span> 
-                <span className={styles.gradeDescription}>Fair conditions</span>
-              </div>
-              <div className={styles.tooltipGrade}>
-                <span className={`${styles.gradeRange} ${styles.gradeRangePoor}`}>0-34:</span> 
-                <span className={styles.gradeDescription}>Poor surf</span>
+              <div className={styles.tooltipGrades}>
+                <div className={styles.tooltipGrade}>
+                  <span className={`${styles.gradeRange} ${styles.gradeRangeExcellent}`}>75-100:</span> 
+                  <span className={styles.gradeDescription}>Excellent conditions</span>
+                </div>
+                <div className={styles.tooltipGrade}>
+                  <span className={`${styles.gradeRange} ${styles.gradeRangeGood}`}>55-74:</span> 
+                  <span className={styles.gradeDescription}>Good surf</span>
+                </div>
+                <div className={styles.tooltipGrade}>
+                  <span className={`${styles.gradeRange} ${styles.gradeRangeFair}`}>35-54:</span> 
+                  <span className={styles.gradeDescription}>Fair conditions</span>
+                </div>
+                <div className={styles.tooltipGrade}>
+                  <span className={`${styles.gradeRange} ${styles.gradeRangePoor}`}>0-34:</span> 
+                  <span className={styles.gradeDescription}>Poor surf</span>
+                </div>
               </div>
             </div>
           </div>
