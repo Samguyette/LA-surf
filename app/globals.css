@@ -535,3 +535,19 @@ html, body {
     font-size: 10px;
   }
 }
+
+/* Buoy layer styles */
+.buoy-label {
+  pointer-events: none;
+}
+
+.buoy-label div {
+  transition: all 0.2s ease;
+}
+
+.buoy-label:hover div {
+  transform: scale(1.1);
+  background: rgba(0, 102, 204, 1) !important;
+}
+
+

@@ -11,6 +11,7 @@ Real-time surf condition visualization for Los Angeles County coastline, powered
 - 📊 **Section Ribbon**: Top bar showing all sections with scores and wave heights
 - 🔄 **Auto-refresh**: Updates every 20 minutes with caching
 - 📱 **Responsive**: Works on desktop and mobile
+- 📍 **Real Buoy Locations**: Actual NOAA NDBC buoys and wave measurement stations in the LA area
 
 ## Tech Stack
 
@@ -41,6 +42,8 @@ Open [http://localhost:3000](http://localhost:3000)
 **Coastal Sections**: 12 sections from Oxnard to Palos Verdes, each with averaged wave data and quality scores.
 
 **Data**: Open-Meteo Marine Weather API with 100-point grid, cached for 20 minutes, auto-refreshes.
+
+**Buoy Visualization**: The map displays real physical wave measurement stations including NOAA NDBC buoys (Santa Monica Basin, Santa Barbara, Point Arguello) and Open-Meteo API data collection points. Each station shows detailed information on hover/click, including buoy type, status, and exact coordinates. Users can toggle station labels and view a comprehensive legend explaining the different data sources.
 
 ---
 

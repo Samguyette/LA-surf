@@ -9,6 +9,8 @@ import CoastlineLayer from '@/components/CoastlineLayer'
 import RefreshIndicator from '@/components/RefreshIndicator'
 import SectionRibbon from '@/components/SectionRibbon'
 import InteractiveHint from '@/components/InteractiveHint'
+import BuoyLayer from '@/components/BuoyLayer'
+import styles from './SurfMap.module.css'
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -108,6 +110,7 @@ export default function SurfMap() {
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined)
+  const [showBuoyInfo, setShowBuoyInfo] = useState(false)
   const handleMapReady = useCallback((map: L.Map) => {}, [])
 
   /**
@@ -196,34 +199,16 @@ export default function SurfMap() {
 
   if (error && waveData.length === 0) {
     return (
-      <div style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f8f9fa',
-        color: '#666',
-        fontFamily: 'system-ui, sans-serif'
-      }}>
-        <h2 style={{ marginBottom: '16px', color: '#333' }}>
+      <div className={styles.errorContainer}>
+        <h2 className={styles.errorTitle}>
           Unable to Load Wave Data
         </h2>
-        <p style={{ marginBottom: '24px', textAlign: 'center', maxWidth: '400px' }}>
+        <p className={styles.errorMessage}>
           {error}
         </p>
         <button
           onClick={() => fetchWaveData()}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
+          className={styles.retryButton}
         >
           Retry
         </button>
@@ -232,7 +217,7 @@ export default function SurfMap() {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+    <div className={styles.mapContainer}>
       {/* Section ribbon */}
       {waveData.length > 0 && (
         <SectionRibbon 
@@ -274,6 +259,9 @@ export default function SurfMap() {
             onLoadingChange={setIsCoastlineLoading}
           />
         )}
+        
+        {/* Buoy locations layer */}
+        <BuoyLayer showLabels={false} />
       </MapContainer>
       
       {/* Loading indicator */}
@@ -288,6 +276,43 @@ export default function SurfMap() {
         nextRefresh={nextRefresh}
         error={error}
       />
+      
+      {/* Buoy information button */}
+      <button
+        onClick={() => setShowBuoyInfo(!showBuoyInfo)}
+        className={`${styles.buoyInfoButton} ${showBuoyInfo ? styles.active : ''}`}
+        title="Wave Measurement Stations Info"
+      >
+        Buoy Info
+      </button>
+      
+      {/* Buoy legend - only show when info button is clicked */}
+      {showBuoyInfo && (
+        <div className={styles.buoyInfoPanel}>
+          <div className={styles.panelHeader}>
+            <div className={styles.panelTitle}>
+              Wave Measurement Stations
+            </div>
+            <button
+              onClick={() => setShowBuoyInfo(false)}
+              className={styles.closeButton}
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
+          <div className={styles.legendItem}>
+            <div className={`${styles.legendDot} ${styles.legendDotOpenMeteo}`}></div>
+            <span className={styles.legendText}>Open-Meteo API Points</span>
+          </div>
+          <div className={styles.panelDescription}>
+            Open-Meteo API data collection points used for wave forecasting in the LA area. These three strategic locations provide wave, wind, and temperature data for surf forecasting. Click on any point for detailed information.
+          </div>
+          <div className={styles.panelFooter}>
+            Total: 3 Open-Meteo API points • Click for details
+          </div>
+        </div>
+      )}
       
       {/* Interactive hint for new users */}
       {waveData.length > 0 && !isLoading && !isCoastlineLoading && (
