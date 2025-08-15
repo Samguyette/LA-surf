@@ -9,7 +9,7 @@ export interface WaveDataPoint {
   waveHeight: number // feet
   wavePeriod: number // seconds
   waveDirection: number // degrees
-  windSpeed: number // knots
+  windSpeed: number // mph (converted from knots)
   waterTemp: number // fahrenheit
   airTemp: number // fahrenheit
   qualityScore: number // 0-100 scale
@@ -56,7 +56,7 @@ export interface OpenMeteoResponse {
 export interface WaveQualityInput {
   waveHeight: number // feet
   wavePeriod: number // seconds
-  windSpeed: number // knots
+  windSpeed: number // mph (converted from knots)
   waveDirection?: number // degrees (optional)
   windDirection?: number // degrees (optional)
 }
@@ -86,7 +86,7 @@ export interface WaveQualityConfig {
     maxWaveHeight: number // feet
     minWavePeriod: number // seconds
     maxWavePeriod: number // seconds
-    maxWindSpeed: number // knots
+    maxWindSpeed: number // mph (converted from knots)
   }
 }
 

@@ -24,11 +24,11 @@ import { SECTION_LOCATION_FACTOR } from '@/data/sections'
  * 
  * 3. Wind Conditions (35% weight): Enhanced wind analysis with direction
  *    Wind Speed:
- *    - Glass (0-3 knots): excellent conditions (90-100%)
- *    - Light (3-8 knots): good conditions (60-90%)
- *    - Moderate (8-12 knots): fair conditions (30-60%)
- *    - Strong (12-18 knots): poor conditions (10-30%)
- *    - Very strong (>18 knots): blown out (0-10%)
+ *    - Glass (0-3.5 mph): excellent conditions (90-100%)
+ *    - Light (3.5-9 mph): good conditions (60-90%)
+ *    - Moderate (9-14 mph): fair conditions (30-60%)
+ *    - Strong (14-21 mph): poor conditions (10-30%)
+ *    - Very strong (>21 mph): blown out (0-10%)
  *    
  *    Wind Direction (multiplier on wind score):
  *    - Offshore winds (opposite to waves): improve quality (1.4x)

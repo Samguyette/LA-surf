@@ -411,7 +411,7 @@ function WaveTooltipContent({ point, coastlinePointName }: WaveTooltipContentPro
         </div>
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Wind Speed</div>
-          <div className={styles.metricValue}>{point.windSpeed} kts</div>
+          <div className={styles.metricValue}>{Math.round(point.windSpeed * 1.15078 * 10) / 10} mph</div>
         </div>
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Temp</div>
