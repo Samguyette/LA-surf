@@ -42,11 +42,12 @@
   bottom: 80px;
   right: 20px;
   z-index: 1000;
-  background-color: rgba(255, 255, 255, 0.95);
-  padding: 16px 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 11px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   min-width: 240px;
   max-width: 280px;
 }
@@ -59,9 +60,10 @@
 }
 
 .panelTitle {
-  font-size: 16px;
   font-weight: 700;
-  color: #333;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #f8fafc;
 }
 
 .closeButton {
@@ -69,7 +71,7 @@
   border: none;
   font-size: 18px;
   cursor: pointer;
-  color: #666;
+  color: #e2e8f0;
   padding: 0;
   width: 24px;
   height: 24px;
@@ -81,7 +83,7 @@
 }
 
 .closeButton:hover {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .legendItem {
@@ -108,7 +110,10 @@
 }
 
 .legendText {
-  font-weight: 600;
+  font-size: 10px;
+  line-height: 1.5;
+  opacity: 0.9;
+  color: #e2e8f0;
 }
 
 .panelDescription {
@@ -119,13 +124,23 @@
 }
 
 .panelFooter {
-  font-size: 11px;
-  color: #999;
-  padding: 8px 12px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
+  font-size: 10px;
+  color: #e2e8f0;
+  opacity: 0.8;
   text-align: center;
-  border: 1px solid #eee;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #374151;
+}
+
+.dataSourceLink {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.dataSourceLink:hover {
+  color: #93c5fd;
+  text-decoration: underline;
 }
 
 .loadingSpinner {

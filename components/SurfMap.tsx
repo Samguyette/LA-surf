@@ -10,6 +10,7 @@ import RefreshIndicator from '@/components/RefreshIndicator'
 import SectionRibbon from '@/components/SectionRibbon'
 import InteractiveHint from '@/components/InteractiveHint'
 import BuoyLayer from '@/components/BuoyLayer'
+import WindStationLayer from '@/components/WindStationLayer'
 import styles from './SurfMap.module.css'
 
 // Fix for default markers in react-leaflet
@@ -135,7 +136,7 @@ export default function SurfMap() {
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined)
-  const [showBuoyInfo, setShowBuoyInfo] = useState(false)
+  const [showStationInfo, setShowStationInfo] = useState(false)
   const [selectedSection, setSelectedSection] = useState<string | null>(null)
   const handleMapReady = useCallback((map: L.Map) => {}, [])
 
@@ -296,6 +297,9 @@ export default function SurfMap() {
         
         {/* Buoy locations layer */}
         <BuoyLayer showLabels={false} />
+        
+        {/* Wind measurement stations layer */}
+        <WindStationLayer showLabels={false} />
       </MapContainer>
       
       {/* Loading indicator */}
@@ -311,24 +315,24 @@ export default function SurfMap() {
         error={error}
       />
       
-      {/* Buoy information button */}
+      {/* Station information button */}
       <button
-        onClick={() => setShowBuoyInfo(!showBuoyInfo)}
-        className={`${styles.buoyInfoButton} ${showBuoyInfo ? styles.active : ''}`}
-        title="Wave Measurement Stations Info"
+        onClick={() => setShowStationInfo(!showStationInfo)}
+        className={`${styles.buoyInfoButton} ${showStationInfo ? styles.active : ''}`}
+        title="Wave & Wind Measurement Stations Info"
       >
-        Buoy Info
+        Station Info
       </button>
       
-      {/* Buoy legend - only show when info button is clicked */}
-      {showBuoyInfo && (
+      {/* Station legend - only show when info button is clicked */}
+      {showStationInfo && (
         <div className={styles.buoyInfoPanel}>
           <div className={styles.panelHeader}>
             <div className={styles.panelTitle}>
-              Wave Measurement Stations
+              Wave & Wind Measurement Stations
             </div>
             <button
-              onClick={() => setShowBuoyInfo(false)}
+              onClick={() => setShowStationInfo(false)}
               className={styles.closeButton}
               title="Close"
             >
@@ -336,16 +340,15 @@ export default function SurfMap() {
             </button>
           </div>
           <div className={styles.legendItem}>
-            <div className={`${styles.legendDot} ${styles.legendDotOpenMeteo}`}></div>
-            <span className={styles.legendText}>Open-Meteo API Points</span>
+            <div className={`${styles.legendDot} ${styles.legendDotOpenMeteo}`} style={{flexShrink: '0'}}></div>
+            <span className={styles.legendText}>Wave Buoys — Data collection points for surf forecasting</span>
           </div>
-          <div className={styles.panelDescription}>
-            Open-Meteo API data collection points used for wave forecasting in the LA area. These three strategic locations provide wave, wind, and temperature data for surf forecasting. Click on any point for detailed information.
-            <br /><br />
-            <em>Zoom out to see all buoy locations on the map</em>
+          <div className={styles.legendItem}>
+            <div className={`${styles.legendDot}`} style={{backgroundColor: '#0066cc', width: '12px', height: '12px', flexShrink: '0'}}></div>
+            <span className={styles.legendText}>Wind Stations — Physical measurement stations (offshore, coastal & inland)</span>
           </div>
           <div className={styles.panelFooter}>
-            Total: 3 Open-Meteo API points • <a 
+            Total: 15 measurement stations • <a 
               href="https://open-meteo.com/en/docs/marine-weather-api" 
               target="_blank" 
               rel="noopener noreferrer"

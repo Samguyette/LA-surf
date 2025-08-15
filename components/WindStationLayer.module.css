@@ -1,0 +1,28 @@
+/* Wind Station Layer Styles */
+
+.windStationLabel {
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.windStationLabel div {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .windStationLabel div {
+    font-size: 8px !important;
+    padding: 1px 3px !important;
+    max-width: 50px !important;
+  }
+}
+
+/* High DPI display adjustments */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .windStationLabel div {
+    border-width: 0.5px;
+  }
+}
