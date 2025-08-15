@@ -67,14 +67,14 @@ export default function BuoyLayer({ showLabels = false }: BuoyLayerProps) {
 
       // Add popup with buoy info
       const popupContent = `
-        <div style="text-align: center; min-width: 180px;">
-          <strong style="color: #00aa66;">${buoy.name}</strong><br>
-          <small style="color: #666; font-weight: 600;">${buoy.type}</small><br>
-          <small style="color: #22c55e; font-weight: 600;">${buoy.status}</small><br>
-          <small>${buoy.description}</small><br>
-          <small>Lat: ${buoy.lat.toFixed(3)}°N</small><br>
-          <small>Lng: ${buoy.lng.toFixed(3)}°W</small><br>
-          <small style="color: #666; margin-top: 4px; display: block;">
+        <div class="${styles.buoyPopup}">
+          <strong class="${styles.buoyPopupTitle}">${buoy.name}</strong><br>
+          <small class="${styles.buoyPopupType}">${buoy.type}</small><br>
+          <small class="${styles.buoyPopupStatus}">${buoy.status}</small><br>
+          <small class="${styles.buoyPopupDescription}">${buoy.description}</small><br>
+          <small class="${styles.buoyPopupCoords}">Lat: ${buoy.lat.toFixed(3)}°N</small><br>
+          <small class="${styles.buoyPopupCoords}">Lng: ${buoy.lng.toFixed(3)}°W</small><br>
+          <small class="${styles.buoyPopupSource}">
             Data Source: ${buoy.dataSource}
           </small>
         </div>
@@ -137,19 +137,7 @@ export default function BuoyLayer({ showLabels = false }: BuoyLayerProps) {
       const label = L.marker([buoy.lat, buoy.lng], {
         icon: L.divIcon({
           className: styles.buoyLabel,
-          html: `<div style="
-            background: rgba(0, 170, 102, 0.9);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
-            border: 1px solid white;
-            max-width: 80px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          ">${buoy.id}</div>`,
+          html: `<div class="${styles.buoyLabelContent}">${buoy.id}</div>`,
           iconSize: [80, 20],
           iconAnchor: [40, 10]
         })
