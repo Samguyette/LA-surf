@@ -138,7 +138,10 @@ export default function SurfMap() {
   const [retryCount, setRetryCount] = useState(0)
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined)
   const [selectedSection, setSelectedSection] = useState<string | null>(null)
-  const handleMapReady = useCallback((map: L.Map) => {}, [])
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null)
+  const handleMapReady = useCallback((map: L.Map) => {
+    setMapInstance(map)
+  }, [])
 
   /**
    * Fetch wave data from the API
@@ -316,7 +319,7 @@ export default function SurfMap() {
       />
       
       {/* Station information */}
-      <StationInfo />
+      <StationInfo mapInstance={mapInstance} />
       
       {/* Interactive hint for new users */}
       {waveData.length > 0 && !isLoading && !isCoastlineLoading && (
